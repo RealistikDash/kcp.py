@@ -39,9 +39,8 @@ extensions = []
 
 if with_extensions:
     from Cython.Build import cythonize  # type: ignore
-
-    extensions = cythonize(
-        [Extension("kcp.extension", ["kcp/extension.pyx"])],
+    extensions += cythonize(
+        [Extension("kcp.extension", ["kcp/extension.pyx", "kcp/ikcp.c"])],
         language_level=LANGUAGE_LEVEL,
     )
 
