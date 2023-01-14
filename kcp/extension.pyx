@@ -1,6 +1,8 @@
 from libc.stdint cimport *
 from cpython.bytes cimport PyBytes_AsString, PyBytes_FromStringAndSize
 
+from .exceptions import *
+
 import time
 
 cdef extern from "ikcp.h":
@@ -169,15 +171,23 @@ cdef class KCPControl:
         self.outbound = b""
         return data
 
-    cpdef int send(self, bytes buffer):
+    cpdef void send(self, bytes buffer):
         cdef int32_t length = len(buffer)
         cdef char* buf = <char*>buffer
-        return self.c_send(buf, length)
+        cdef int32_t res = self.c_send(buf, length)
 
-    cpdef int receive(self, bytes buffer):
+        if res == -1:
+            raise KCPBufferError
+        elif res < -1:
+            raise KCPError(res)
+
+    cpdef void receive(self, bytes buffer):
         cdef int32_t length = len(buffer)
         cdef char* buf = <char*>buffer
-        return self.c_receive(buf, length)
+        cdef int32_t res = self.c_receive(buf, length)
+
+        if res < 0:
+            raise KCPInputError(res)
 
     # This MAY return outbound
     cpdef bytes update(self, ts_ms = None):
