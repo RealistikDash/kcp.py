@@ -1,6 +1,7 @@
 from typing import Optional
 
 class KCPControl:
+    """An object that represents a KCP connection to a remote peer."""
     def __init__(self) -> None: ...
 
     def send(self, data: bytes) -> None: 
