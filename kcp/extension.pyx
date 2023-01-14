@@ -1,4 +1,6 @@
 from libc.stdint cimport *
+from cpython.bytes cimport PyBytes_AsString, PyBytes_FromStringAndSize
+
 import time
 
 cdef extern from "ikcp.h":
@@ -68,7 +70,7 @@ cdef extern from "ikcp.h":
     void ikcp_release(IKCPCB *kcp)
 
     # Sets the output callback function for KCP
-    void ikcp_setoutput(IKCPCB *kcp, int32_t (*output)(const char *buf, int len, IKCPCB* kcp, void* user))
+    void ikcp_setoutput(IKCPCB *kcp, int32_t (*output)(const char* buf, int32_t len, IKCPCB* kcp, void* user))
 
     # (User API) Handles received KCP data
     int32_t ikcp_recv(IKCPCB *kcp, char* buffer, int32_t len)
@@ -100,23 +102,55 @@ cdef extern from "ikcp.h":
     # ?
     int32_t ikcp_nodelay(IKCPCB *kcp, int32_t nodelay, int32_t interval, int32_t resend, int32_t nc)
 
+cdef int32_t set_outbound_data(const char* buf, int32_t len, IKCPCB* kcp, void* user) with gil:
+    cdef KCPControl control = <KCPControl>user
+
+    # Convert buffer to bytes
+    cdef bytes data = PyBytes_FromStringAndSize(buf, len)
+    control.outbound = data
+
+MAX_BUFFER_SIZE = 100000
+cdef bytearray receive_full_data(KCPControl control):
+    cdef bytearray data = bytearray()
+    cdef char buffer[1024]
+    cdef int32_t length
+
+    while True:
+        length = ikcp_recv(control.kcp, buffer, 1024)
+        if length < 0:
+            break
+
+        if length != 1024:
+            data.extend(buffer[:length])
+            break
+        
+        data.extend(buffer)
+
+        if len(data) > MAX_BUFFER_SIZE:
+            break
+
+    return data
+
 # OOP Python interface
 cdef class KCPControl:
     cdef IKCPCB* kcp
+    cdef bytes outbound
 
     def __cinit__(self):
         # TODO: Randomise conv
-        self.kcp = ikcp_create(32, NULL)
+        self.kcp = ikcp_create(32, <void*>self)
+        ikcp_setoutput(self.kcp, set_outbound_data)
+        self.outbound = b""
 
     def __dealloc__(self):
         ikcp_release(self.kcp)
 
     # Direct C APIs.
-    cdef int32_t c_receive(self, char* buffer, int32_t length):
-        return ikcp_recv(self.kcp, buffer, length)
-
     cdef int32_t c_send(self, const char* buffer, int32_t length):
         return ikcp_send(self.kcp, buffer, length)
+
+    cdef int32_t c_receive(self, char* buffer, int32_t length):
+        return ikcp_input(self.kcp, buffer, length)
 
     cdef void c_update(self, uint32_t current):
         ikcp_update(self.kcp, current)
@@ -124,17 +158,42 @@ cdef class KCPControl:
     cdef void c_flush(self):
         ikcp_flush(self.kcp)
 
-    # Python API
-    cpdef int receive(self, bytes buffer):
-        cdef int32_t length = len(buffer)
-        cdef char* buf = <char*>buffer
-        return self.c_receive(buf, length)
+    cdef int32_t c_wait_send(self):
+        return ikcp_waitsnd(self.kcp)
+
+    cdef make_outbound_copy(self):
+        # Dont do antything if there is no outbound data
+        if len(self.outbound) == 0:
+            return None
+        cdef bytes data = self.outbound
+        self.outbound = b""
+        return data
 
     cpdef int send(self, bytes buffer):
         cdef int32_t length = len(buffer)
         cdef char* buf = <char*>buffer
         return self.c_send(buf, length)
 
-    cpdef void update_cur(self):
+    cpdef int receive(self, bytes buffer):
+        cdef int32_t length = len(buffer)
+        cdef char* buf = <char*>buffer
+        return self.c_receive(buf, length)
+
+    # This MAY return outbound
+    cpdef bytes update(self, ts_ms = None):
         # TODO: Use way faster clock
-        self.c_update(time.time_ns() // 1000000)
+        if ts_ms is None:
+            ts_ms = time.perf_counter_ns() // 1000000
+        self.c_update(ts_ms)
+
+        return self.make_outbound_copy()
+
+    cpdef int get_queued_packets(self):
+        return self.c_wait_send()
+
+    cpdef bytes read_outbound(self):
+        self.c_flush()
+        return self.make_outbound_copy()
+
+    cpdef bytearray read_inbound(self):
+        return receive_full_data(self)
