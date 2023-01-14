@@ -2,7 +2,7 @@
 Python bindings and abstractions for the KCP protocol.
 
 ## Features
-- [*] Bindings to the C implementation of KCP
+- [x] Bindings to the C implementation of KCP
 - [ ] Full support for installation through pip
 - [ ] Pythonic API over said C bindings
 - [ ] Simple implementation of a KCP server.
