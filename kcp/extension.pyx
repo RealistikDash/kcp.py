@@ -56,8 +56,8 @@ cdef extern from "ikcp.h":
         int32_t nocwnd
         int32_t stream
         int32_t logmask
-        int32_t (*output)(const char *buf, int len, struct IKCPCB *kcp, void *user)
-        void (*writelog)(const char *log, struct IKCPCB *kcp, void *user);
+        int32_t (*output)(const char* buf, int len, IKCPCB* kcp, void *user)
+        void (*writelog)(const char* log, IKCPCB* kcp, void* user);
 
     # Functions
 
@@ -80,7 +80,7 @@ cdef extern from "ikcp.h":
     void ikcp_update(IKCPCB *kcp, uint32_t current)
 
     # Gives time till next ikcp_update() call in ms.
-    uint32_T ikcp_check(IKCPCB *kcp, uint32_t current)
+    uint32_t ikcp_check(IKCPCB *kcp, uint32_t current)
 
     # Low level UDP packet input, call it when you receive a low level UDP packet
     int32_t ikcp_input(IKCPCB *kcp, const char *data, long size)
@@ -112,11 +112,11 @@ cdef class KCPControl:
         ikcp_release(self.kcp)
 
     # Direct C APIs.
-    cdef int32_t c_receive(self, char* buffer, int32_t len):
-        return ikcp_recv(self.kcp, buffer, len)
+    cdef int32_t c_receive(self, char* buffer, int32_t length):
+        return ikcp_recv(self.kcp, buffer, length)
 
-    cdef int32_t c_send(self, const char* buffer, int32_t len):
-        return ikcp_send(self.kcp, buffer, len)
+    cdef int32_t c_send(self, const char* buffer, int32_t length):
+        return ikcp_send(self.kcp, buffer, length)
 
     cdef void c_update(self, uint32_t current):
         ikcp_update(self.kcp, current)
@@ -126,14 +126,14 @@ cdef class KCPControl:
 
     # Python API
     cpdef int receive(self, bytes buffer):
-        cdef int32_t len = len(buffer)
+        cdef int32_t length = len(buffer)
         cdef char* buf = <char*>buffer
-        return self.c_receive(buf, len)
+        return self.c_receive(buf, length)
 
     cpdef int send(self, bytes buffer):
-        cdef int32_t len = len(buffer)
+        cdef int32_t length = len(buffer)
         cdef char* buf = <char*>buffer
-        return self.c_send(buf, len)
+        return self.c_send(buf, length)
 
     cpdef void update_cur(self):
         # TODO: Use way faster clock
