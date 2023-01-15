@@ -11,7 +11,6 @@ from typing import Optional
 
 from .exceptions import *
 from .extension import KCP
-from .utils import create_unique_token
 
 # We use asyncio's datagram protocol as it is the fastest way to
 # implement a UDP server. We are probably not using it the intended
@@ -50,7 +49,7 @@ class Connection:
 
         while data := self._kcp.get_received():
             server = self._server
-            server._loop.create_task(server._data_handler(self, data))
+            server._loop.create_task(server._data_handler(self, data))  # type: ignore
 
     def send(self, data: bytes) -> None:
         self._kcp.enqueue(data)
@@ -98,13 +97,12 @@ class KCPServerAsync:
         connection = self._connections.get(address)
         if connection is None:
             connection = Connection(
-                _kcp=KCP(self._conv, identity_token=create_unique_token()),
+                _kcp=KCP(self._conv),
                 _server=self,
                 address=address[0],
                 port=address[1],
             )
             self._connections[address] = connection
-            print("Created new connection:", address)
 
         return connection
 
@@ -123,9 +121,8 @@ class KCPServerAsync:
         # Update connection timing information.
         while True:
             await asyncio.sleep(self._delay / 1000)
-            ts_ms = time.perf_counter_ns() // 1000000
             for connection in self._connections.values():
-                connection.update(ts_ms)
+                connection.update()
 
     def start(self) -> None:
         self._loop.run_until_complete(self.listen())

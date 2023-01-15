@@ -247,12 +247,22 @@ cpdef get_current_time_ms():
     # Use perf counter as it isnt affected by system time changes.
     return time.perf_counter_ns() // 1000000
 
+cdef class Clock:
+    cdef uint64_t start_time
+
+    def __cinit__(self):
+        self.start_time = get_current_time_ms()
+
+    cpdef uint32_t get_time(self):
+        return get_current_time_ms() - self.start_time
+
 
 cdef class KCP:
     cdef IKCPCB* kcp
     # Correctly annotating this causes a cython compiler crash LOL
     cdef _data_handler # type: Optional[OutboundDataHandler]
     cdef public identity_token
+    cdef Clock _clock
 
     def __init__(
         self,
@@ -284,6 +294,8 @@ cdef class KCP:
         self.set_maximum_transmission(max_transmission)
 
         self.identity_token = identity_token
+
+        self._clock = Clock() # todo: use a better clock
 
     cdef handle_output(self, const char* buf, int32_t len):
         # Create a bytes object from the buffer.
@@ -354,17 +366,25 @@ cdef class KCP:
     cpdef update(self, ts_ms: Optional[int] = None):
         # Use python's time module if no timestamp is provided.
         if ts_ms is None:
-            ts_ms = get_current_time_ms()
+            ts_ms = self._clock.get_time()
 
         ikcp_update(self.kcp, ts_ms)
 
     # Checks when the next update should be called (in ms).
-    cpdef int32_t update_check(self, ts_ms: Optional[int] = None):
+    cpdef int update_check(self, ts_ms: Optional[int] = None):
         # Use python's time module if no timestamp is provided.
         if ts_ms is None:
-            ts_ms = get_current_time_ms()
+            ts_ms = self._clock.get_time()
 
-        return ikcp_check(self.kcp, ts_ms)
+        cdef res = ikcp_check(self.kcp, ts_ms)
+        print(res)
+
+        if res < 0:
+            raise KCPException(
+                "Incorrect timing information."
+            )
+
+        return res
 
     # Flushes the outbound data, calling the outbound handler if there is data.
     cpdef flush(self):

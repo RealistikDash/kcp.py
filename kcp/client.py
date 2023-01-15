@@ -6,8 +6,7 @@ import time
 from typing import Callable
 from typing import Optional
 
-from .extension import OldKCPControl
-from .utils import create_unique_token
+from .extension import KCP
 
 SyncDataHandler = Callable[[bytes], None]
 
@@ -19,7 +18,8 @@ class KCPClientSync:
         self.address = address
         self.port = port
         self._sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM, 0)
-        self._kcp = OldKCPControl(create_unique_token(), conv)
+        self._kcp = KCP(conv)
+        self._kcp.include_outbound_handler(self._send_kcp)
         # Port 0 means the OS will pick a random port.
         self._local_port = 0
 
@@ -43,18 +43,16 @@ class KCPClientSync:
         )
         self._data_sent = True
 
-    def _update(self) -> None:
-        data = self._kcp.update()
-        if data is not None:
-            self._send_raw_data(data)
+    def _send_kcp(self, _, data: bytes) -> None:
+        self._send_raw_data(data)
 
     def _receive(self, data: bytes) -> None:
+        print("Received data", data)
         self._kcp.receive(data)
 
         # Handle data
-        buffer_data = self._kcp.read_inbound()
-        if buffer_data:
-            self._handle_data(buffer_data)
+        while data := self._kcp.get_received():
+            self._handle_data(data)
 
     def _wait_for_address(self) -> None:
         """Waits for the socket to be bound to an address."""
@@ -65,18 +63,14 @@ class KCPClientSync:
     # Public API
     def send(self, data: bytes) -> None:
         """Enqueues data to be sent to the server on the next update cycle."""
-        self._kcp.send(data)
+        self._kcp.enqueue(data)
 
-    def receive(self, data: bytes) -> None:
-        """Receives KCP data from the server."""
-        self._receive(data)
-
-    def update_loop(self, delay: float = 0.1) -> None:
+    def update_loop(self) -> None:
         """Creates a loop that updates the KCP connection."""
 
         while True:
-            self._update()
-            time.sleep(delay)
+            self._kcp.update()
+            time.sleep(self._kcp.update_check() / 1000)
 
     def receive_loop(self) -> None:
         """Creates a loop that receives data from the server."""
