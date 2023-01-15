@@ -222,8 +222,8 @@ cdef class KCPControl:
     cpdef bytearray read_inbound(self):
         return receive_full_data(self)
 
-    cpdef no_delay(self, int32_t nodelay, int32_t interval, int32_t resend, int32_t nc):
-        self.c_set_nodelay(nodelay, interval, resend, nc)
+    cpdef no_delay(self, bool nodelay, int32_t interval, int32_t resend, int32_t nc):
+        self.c_set_nodelay(<int32_t>nodelay, interval, resend, nc)
 
     # Maximum Transmission Unit
     cpdef set_mtu(self, int32_t mtu):

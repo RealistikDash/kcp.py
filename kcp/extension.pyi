@@ -28,10 +28,10 @@ class KCPControl:
     def set_mtu(self, mtu: int) -> None:
         """Sets the MTU (maximum transmission unit) of the connection."""
         ...
-    def no_delay(self, nodelay: int, interval: int, resend: int, nc: int) -> None:
+    def no_delay(self, nodelay: bool, interval: int, resend: int, nc: int) -> None:
         """Sets the connection's no-delay parameters.
 
-        :param nodelay: 0 to disable, 1 to enable.
+        :param nodelay: Toggle nodelay.
         :param interval: The internal update interval in milliseconds.
         :param resend: The number of times to resend a packet if it is not acknowledged.
         :param nc: Whether to disable congestion control.
