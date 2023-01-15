@@ -1,17 +1,21 @@
 from __future__ import annotations
 
 
-class KCPInputError(Exception):
+class KCPException(Exception):
     pass
 
 
-class KCPEmptyBufferError(KCPInputError):
+class KCPInputError(KCPException):
     pass
 
 
-class KCPError(Exception):
+class KCPEmptyBufferError(KCPException):
     pass
 
 
-class KCPAsyncServerError(Exception):
+class KCPError(KCPException):
+    pass
+
+
+class KCPAsyncServerError(KCPException):
     pass
