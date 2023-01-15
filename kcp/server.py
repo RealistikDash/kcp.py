@@ -25,6 +25,9 @@ class ConnectionContext:
     port: int
     token: str
 
+    def __str__(self) -> str:
+        return f"{self.token}@{self.address}:{self.port}"
+
     def enqueue(self, data: bytes) -> None:
         """Enqueue data to be sent to the client on the next connection update."""
         self._kcp.send(data)
@@ -34,7 +37,7 @@ class ConnectionContext:
         loop = asyncio.get_event_loop()
         await loop.sock_sendall(self._socket, data)
 
-        self._logger.debug(f"Sent data to client {self.token}@{self.address}:{self.port}")
+        self._logger.debug(f"Sent data to client {self}")
 
     async def update(self, timestamp_ms: Optional[int] = None) -> None:
         """Update the KCP connection. This will handle sending any queued data alongside
@@ -45,7 +48,7 @@ class ConnectionContext:
             await self._send(queued)
 
 
-ConnectionHandler = Callable[[ConnectionContext], Awaitable[None]]
+ConnectionHandler = Callable[[ConnectionContext, bytes], Awaitable[None]]
 
 
 class AsyncKCPServer:
@@ -120,20 +123,17 @@ class AsyncKCPServer:
             context._kcp.receive(data)
             kcp_data = context._kcp.read_inbound()
             if kcp_data:
-                await self._handler(context)  # type: ignore
+                await self._handler(context, kcp_data)  # type: ignore
 
     async def _create_update_loop(self) -> None:
         self._update_loop_task = asyncio.create_task(self._update_connection_loop())
 
     # Decorator to set the connection handler.
-    async def on_data(self) -> Callable[[ConnectionHandler], ConnectionHandler]:
+    def on_data(self, handler: ConnectionHandler):
         """Decorator setting the handler for whenever data is received from a client."""
 
-        def decorator(handler: ConnectionHandler) -> ConnectionHandler:
-            self._handler = handler
-            return handler
-
-        return decorator
+        self._handler = handler
+        return handler
 
     async def close(self) -> None:
         """Closes the server and all connections."""
@@ -159,6 +159,7 @@ class AsyncKCPServer:
 
         # Bind the socket to the address and port.
         sock.bind((self.address, self.port))
+        sock.listen(10)
         await self._create_update_loop()
 
         self._logger.info(f"KCP Server is listening on {self.address}:{self.port}")
@@ -170,6 +171,4 @@ class AsyncKCPServer:
     def start(self) -> None:
         """Handles the creation of the loop, and starts the server."""
         loop = asyncio.get_event_loop()
-
-        # Create the update loop task.
-        loop.run_until_complete(self._update_connection_loop())
+        loop.run_until_complete(self.listen())
