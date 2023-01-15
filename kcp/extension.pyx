@@ -2,9 +2,9 @@ from libc.stdint cimport *
 from cpython.bytes cimport PyBytes_FromStringAndSize
 from cpython cimport bool
 
-from .exceptions import *
-
 import time
+
+from .exceptions import *
 
 cdef extern from "ikcp.h":
     # Structures
@@ -106,135 +106,6 @@ cdef extern from "ikcp.h":
     int32_t ikcp_nodelay(IKCPCB *kcp, int32_t nodelay, int32_t interval, int32_t resend, int32_t nc)
 
     void ikcp_wndsize(IKCPCB *kcp, int32_t sndwnd, int32_t rcvwnd)
-
-cdef int32_t set_outbound_data(const char* buf, int32_t len, IKCPCB* kcp, void* user) with gil:
-    cdef OldKCPControl control = <OldKCPControl>user
-
-    # Convert buffer to bytes
-    cdef bytes data = PyBytes_FromStringAndSize(buf, len)
-    control.outbound = data
-
-cdef bytearray receive_full_data(OldKCPControl control):
-    cdef bytearray data = bytearray()
-    cdef char buffer[1024]
-    cdef int32_t length
-
-    while True:
-        length = ikcp_recv(control.kcp, buffer, 1024)
-        if length < 0:
-            break
-
-        if length != 1024:
-            data.extend(buffer[:length])
-            break
-
-        data.extend(buffer)
-
-    return data
-
-# OOP Python interface
-
-# DEPRECATED
-cdef class OldKCPControl:
-    cdef IKCPCB* kcp
-    cdef bytes outbound
-    cdef public str token
-
-    def __init__(self, str token, int32_t conv):
-        self.kcp = ikcp_create(conv, <void*>self)
-        ikcp_setoutput(self.kcp, set_outbound_data)
-        self.outbound = b""
-        self.token = token
-
-    def __dealloc__(self):
-        ikcp_release(self.kcp)
-
-    # Direct C APIs.
-    cdef int32_t c_send(self, const char* buffer, int32_t length):
-        return ikcp_send(self.kcp, buffer, length)
-
-    cdef int32_t c_receive(self, char* buffer, int32_t length):
-        return ikcp_input(self.kcp, buffer, length)
-
-    cdef void c_update(self, uint32_t current):
-        ikcp_update(self.kcp, current)
-
-    cdef void c_flush(self):
-        ikcp_flush(self.kcp)
-
-    cdef int32_t c_wait_send(self):
-        return ikcp_waitsnd(self.kcp)
-
-    # Sets the MTU for KCP (I dont know what this is)
-    cdef int32_t c_set_mtu(self, int32_t mtu):
-        return ikcp_setmtu(self.kcp, mtu)
-
-    # Sets the window size for KCP
-    cdef void c_set_window_size(self, int32_t send, int32_t receive):
-        ikcp_wndsize(self.kcp, send, receive)
-
-    # Sets the delay mode for KCP
-    cdef void c_set_nodelay(self, int32_t nodelay, int32_t interval, int32_t resend, int32_t nc):
-        ikcp_nodelay(self.kcp, nodelay, interval, resend, nc)
-
-    cdef make_outbound_copy(self):
-        # Dont do antything if there is no outbound data
-        if not self.outbound:
-            return None
-        cdef bytes data = self.outbound
-        self.outbound = b""
-        return data
-
-    # Python APIs
-    cpdef void send(self, bytes buffer):
-        cdef int32_t length = len(buffer)
-        cdef char* buf = <char*>buffer
-        cdef int32_t res = self.c_send(buf, length)
-
-        if res == -1:
-            raise KCPBufferError
-        elif res < -1:
-            raise KCPException(res)
-
-    cpdef void receive(self, bytes buffer):
-        cdef int32_t length = len(buffer)
-        cdef char* buf = <char*>buffer
-        cdef int32_t res = self.c_receive(buf, length)
-
-        if res == -1:
-            raise KCPConvMismatchError
-        elif res < 0:
-            raise KCPInputError(res)
-
-    # This MAY return outbound
-    cpdef bytes update(self, ts_ms: Optional[int] = None):
-        # TODO: Use way faster clock
-        if ts_ms is None:
-            ts_ms = time.perf_counter_ns() // 1000000
-        self.c_update(ts_ms)
-
-        return self.make_outbound_copy()
-
-    cpdef int get_queued_packets(self):
-        return self.c_wait_send()
-
-    cpdef bytes read_outbound(self):
-        self.c_flush()
-        return self.make_outbound_copy()
-
-    cpdef bytearray read_inbound(self):
-        return receive_full_data(self)
-
-    cpdef no_delay(self, bool nodelay, int32_t interval, int32_t resend, int32_t nc):
-        self.c_set_nodelay(<int32_t>nodelay, interval, resend, nc)
-
-    # Maximum Transmission Unit
-    cpdef set_mtu(self, int32_t mtu):
-        self.c_set_mtu(mtu)
-
-
-## NEW KCP
-import time
 
 #OutboundDataHandler = Callable[[KCP, bytes], None]
 
