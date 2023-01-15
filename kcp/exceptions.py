@@ -6,3 +6,6 @@ class KCPEmptyBufferError(KCPInputError):
 
 class KCPError(Exception):
     pass
+
+class KCPAsyncServerError(Exception):
+    pass

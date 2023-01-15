@@ -1,7 +1,7 @@
 [tool.poetry]
 name = "kcp.py"
 version = "0.1.0"
-description = "Python bindings and abstarctions over the KCP protocol. "
+description = "Python bindings and abstarctions over the KCP protocol."
 authors = ["RealistikDash"]
 license = "MIT"
 
