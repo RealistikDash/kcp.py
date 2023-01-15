@@ -5,7 +5,7 @@ from kcp.extension import KCPControl
 
 def test_reversability():
     SEND_DATA = b"Your father is dead."
-    con = KCPControl()
+    con = KCPControl("")
     con.update()
     con.send(SEND_DATA)
     outbound = con.read_outbound()

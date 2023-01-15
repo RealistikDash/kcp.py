@@ -18,11 +18,12 @@ class KCPClientSync:
 
         self.address = address
         self.port = port
-        self._outbound_sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        self._inbound_sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        self._sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM, 0)
         self._kcp = KCPControl(create_unique_token())
         # Port 0 means the OS will pick a random port.
         self._local_port = 0
+
+        self._data_sent = False
 
         # Event handlers
         self._handler: Optional[SyncDataHandler] = None
@@ -36,10 +37,11 @@ class KCPClientSync:
         self._handler(data)
 
     def _send_raw_data(self, data: bytes) -> None:
-        self._outbound_sock.sendto(
+        self._sock.sendto(
             data,
             (self.address, self.port),
         )
+        self._data_sent = True
 
     def _update(self) -> None:
         data = self._kcp.update()
@@ -53,6 +55,12 @@ class KCPClientSync:
         buffer_data = self._kcp.read_inbound()
         if buffer_data:
             self._handle_data(buffer_data)
+
+    def _wait_for_address(self) -> None:
+        """Waits for the socket to be bound to an address."""
+
+        while not self._data_sent:
+            time.sleep(0.1)
 
     # Public API
     def send(self, data: bytes) -> None:
@@ -73,19 +81,14 @@ class KCPClientSync:
     def receive_loop(self) -> None:
         """Creates a loop that receives data from the server."""
 
+        self._wait_for_address()
+
         while True:
-            data, address = self._inbound_sock.recvfrom(2048)
+            data, address = self._sock.recvfrom(2048)
             self._receive(data)
-
-    def bind(self) -> None:
-        """Binds the KCP Client to the configured address and port."""
-
-        self._outbound_sock.bind((self.address, self.port))
-        self._inbound_sock.bind(("", self._local_port))
 
     def start(self) -> None:
         """Starts the KCP Client using threads."""
-        self.bind()
 
         threads = [
             threading.Thread(target=self.receive_loop),
