@@ -67,11 +67,12 @@ EventHandler = Callable[[], Awaitable[None]]
 
 # TODO: Just merge this with `KCPServerProtocol`.
 class KCPServerAsync:
-    def __init__(self, address: str, port: int) -> None:
+    def __init__(self, address: str, port: int, conv: int) -> None:
         self.address = address
         self.port = port
         self._transport: Optional[transports.DatagramTransport] = None
         self._loop = asyncio.get_event_loop()
+        self._conv = conv
 
         self._connections: dict[AddressType, Connection] = {}
 
@@ -92,7 +93,7 @@ class KCPServerAsync:
         connection = self._connections.get(address)
         if connection is None:
             connection = Connection(
-                _kcp=KCPControl(create_unique_token()),
+                _kcp=KCPControl(create_unique_token(), self._conv),
                 _server=self,
                 address=address[0],
                 port=address[1],

@@ -104,6 +104,8 @@ cdef extern from "ikcp.h":
     # ?
     int32_t ikcp_nodelay(IKCPCB *kcp, int32_t nodelay, int32_t interval, int32_t resend, int32_t nc)
 
+    void ikcp_wndsize(IKCPCB *kcp, int32_t sndwnd, int32_t rcvwnd)
+
 cdef int32_t set_outbound_data(const char* buf, int32_t len, IKCPCB* kcp, void* user) with gil:
     cdef KCPControl control = <KCPControl>user
 
@@ -111,7 +113,6 @@ cdef int32_t set_outbound_data(const char* buf, int32_t len, IKCPCB* kcp, void* 
     cdef bytes data = PyBytes_FromStringAndSize(buf, len)
     control.outbound = data
 
-MAX_BUFFER_SIZE = 100000
 cdef bytearray receive_full_data(KCPControl control):
     cdef bytearray data = bytearray()
     cdef char buffer[1024]
@@ -128,9 +129,6 @@ cdef bytearray receive_full_data(KCPControl control):
 
         data.extend(buffer)
 
-        if len(data) > MAX_BUFFER_SIZE:
-            break
-
     return data
 
 # OOP Python interface
@@ -139,8 +137,8 @@ cdef class KCPControl:
     cdef bytes outbound
     cdef public str token
 
-    def __init__(self, str token):
-        self.kcp = ikcp_create(1, <void*>self)
+    def __init__(self, str token, int32_t conv):
+        self.kcp = ikcp_create(conv, <void*>self)
         ikcp_setoutput(self.kcp, set_outbound_data)
         self.outbound = b""
         self.token = token
@@ -164,14 +162,27 @@ cdef class KCPControl:
     cdef int32_t c_wait_send(self):
         return ikcp_waitsnd(self.kcp)
 
+    # Sets the MTU for KCP (I dont know what this is)
+    cdef int32_t c_set_mtu(self, int32_t mtu):
+        return ikcp_setmtu(self.kcp, mtu)
+
+    # Sets the window size for KCP
+    cdef void c_set_window_size(self, int32_t send, int32_t receive):
+        ikcp_wndsize(self.kcp, send, receive)
+
+    # Sets the delay mode for KCP
+    cdef void c_set_nodelay(self, int32_t nodelay, int32_t interval, int32_t resend, int32_t nc):
+        ikcp_nodelay(self.kcp, nodelay, interval, resend, nc)
+
     cdef make_outbound_copy(self):
         # Dont do antything if there is no outbound data
-        if len(self.outbound) == 0:
+        if not self.outbound:
             return None
         cdef bytes data = self.outbound
         self.outbound = b""
         return data
 
+    # Python APIs
     cpdef void send(self, bytes buffer):
         cdef int32_t length = len(buffer)
         cdef char* buf = <char*>buffer
@@ -210,3 +221,10 @@ cdef class KCPControl:
 
     cpdef bytearray read_inbound(self):
         return receive_full_data(self)
+
+    cpdef no_delay(self, int32_t nodelay, int32_t interval, int32_t resend, int32_t nc):
+        self.c_set_nodelay(nodelay, interval, resend, nc)
+
+    # Maximum Transmission Unit
+    cpdef set_mtu(self, int32_t mtu):
+        self.c_set_mtu(mtu)
