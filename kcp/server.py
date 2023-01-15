@@ -3,7 +3,6 @@ from __future__ import annotations
 import asyncio
 import logging
 import socket
-import uuid
 from dataclasses import dataclass
 from typing import Awaitable
 from typing import Callable
@@ -11,6 +10,7 @@ from typing import Optional
 
 from .exceptions import *
 from .extension import KCPControl
+from .utils import create_unique_token
 
 
 @dataclass
@@ -96,7 +96,7 @@ class AsyncKCPServer:
         if cur_task is None:
             raise RuntimeError("`_handle_connection` was called outside of a task.")
         # Create context
-        identifier = str(uuid.uuid4())
+        identifier = create_unique_token()
         kcp = KCPControl(identifier)
         sock_addr, sock_port = socket.getpeername()
 
