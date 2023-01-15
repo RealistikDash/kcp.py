@@ -6,5 +6,4 @@ __version__ = "0.1.0"
 __author__ = "RealistikDash <realistikdash@gmail.com>"
 
 from .extension import KCPControl
-from .server import AsyncKCPServer
 from .client import KCPClient
