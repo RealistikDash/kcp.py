@@ -7,6 +7,7 @@ from typing import Awaitable
 from typing import Optional
 import asyncio
 import socket
+import logging
 import uuid
 
 
@@ -17,16 +18,21 @@ class ConnectionContext:
     _kcp: KCPControl
     _socket: socket.socket
     _handle_task: asyncio.Task
+    _logger: logging.Logger
     address: str
     port: int
     token: str
 
     def enqueue(self, data: bytes) -> None:
+        """Enqueue data to be sent to the client on the next connection update."""
         self._kcp.send(data)
 
     async def _send(self, data: bytes) -> None:
+        """Sends raw data to the connected client."""
         loop = asyncio.get_event_loop()
         await loop.sock_sendall(self._socket, data)
+
+        self._logger.debug(f"Sent data to client {self.token}@{self.address}:{self.port}")
 
     async def update(self, timestamp_ms: Optional[int] = None) -> None:
         """Update the KCP connection. This will handle sending any queued data alongside 
@@ -49,10 +55,12 @@ class AsyncKCPServer:
         "_handler",
         "_connections",
         "_closing",
-        "_update_loop_task"
+        "_update_loop_task",
+        "_logger",
     )
 
     def __init__(self, address: str, port: int) -> None:
+        """Configures the KCP server."""
         self.port = port
         self.address = address
         self._socket: Optional[socket.socket] = None
@@ -60,6 +68,7 @@ class AsyncKCPServer:
         self._connections: list[ConnectionContext] = []
         self._closing = False
         self._update_loop_task: Optional[asyncio.Task] = None
+        self._logger = logging.getLogger("kcp.async_server")
 
     def _configure_socket(self) -> socket.socket:
         # Configure a UDP socket.
@@ -91,9 +100,12 @@ class AsyncKCPServer:
             address=sock_addr,
             port=sock_port,
             token=identifier,
+            _logger=self._logger,
         )
 
         self._connections.append(context)
+
+        self._logger.info(f"Received connection from {sock_addr}:{sock_port}")
         
         # Keep listening for data until the connection is closed.
         while True:
@@ -106,16 +118,30 @@ class AsyncKCPServer:
             if kcp_data:
                 await self._handler(context) # type: ignore
 
+    async def _create_update_loop(self) -> None:
+        self._update_loop_task = asyncio.create_task(self._update_connection_loop())
+
     # Decorator to set the connection handler.
     async def on_data(self) -> Callable[[ConnectionHandler], ConnectionHandler]:
+        """Decorator setting the handler for whenever data is received from a client."""
         def decorator(handler: ConnectionHandler) -> ConnectionHandler:
             self._handler = handler
             return handler
 
         return decorator
 
+    async def close(self) -> None:
+        """Closes the server and all connections."""
+        self._closing = True
+        if self._update_loop_task is not None:
+            self._update_loop_task.cancel()
+
+        for connection in self._connections:
+            connection._handle_task.cancel()
+            connection._socket.close()
+
     async def listen(self) -> None:
-        """Start the KCP server."""
+        """Binds the server to the address and port and starts listening for connections."""
 
         loop = asyncio.get_event_loop()
 
@@ -128,14 +154,17 @@ class AsyncKCPServer:
 
         # Bind the socket to the address and port.
         sock.bind((self.address, self.port))
+        await self._create_update_loop()
+
+        self._logger.info(f"KCP Server is listening on {self.address}:{self.port}")
 
         while not self._closing:
             client, _ = await loop.sock_accept(sock)
             loop.create_task(self._handle_connection(client))
 
-        # Close all connections.
-        for connection in self._connections:
-            connection._handle_task.cancel()
-            connection._socket.close()
+    def start(self) -> None:
+        """Handles the creation of the loop, and starts the server."""
+        loop = asyncio.get_event_loop()
 
-
+        # Create the update loop task.
+        loop.run_until_complete(self._update_connection_loop())
