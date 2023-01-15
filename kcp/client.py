@@ -18,17 +18,17 @@ class KCPClient:
 
         self.address = address
         self.port = port
-        self._socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        self._handler: Optional[SyncDataHandler] = None
+        self._outbound_sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        self._inbound_sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         self._kcp = KCPControl(create_unique_token())
+        # Port 0 means the OS will pick a random port.
+        self._local_port = 0
+
+        # Event handlers
+        self._handler: Optional[SyncDataHandler] = None
+        self._on_start: Optional[Callable[[], None]] = None
 
     # Private API
-
-    def _configure_socket(self) -> socket.socket:
-        self._socket.setblocking(False)
-
-        return self._socket
-
     def _handle_data(self, data: bytes) -> None:
         if self._handler is None:
             raise RuntimeError("No data handler was set.")
@@ -36,7 +36,7 @@ class KCPClient:
         self._handler(data)
 
     def _send_raw_data(self, data: bytes) -> None:
-        self._socket.sendto(
+        self._outbound_sock.sendto(
             data,
             (self.address, self.port),
         )
@@ -74,28 +74,42 @@ class KCPClient:
         """Creates a loop that receives data from the server."""
 
         while True:
-            data, _ = self._socket.recvfrom(2048)
+            data, address = self._inbound_sock.recvfrom(2048)
             self._receive(data)
+
+    def bind(self) -> None:
+        """Binds the KCP Client to the configured address and port."""
+
+        self._outbound_sock.bind((self.address, self.port))
+        self._inbound_sock.bind(("", self._local_port))
 
     def start(self) -> None:
         """Starts the KCP Client using threads."""
-
-        self._configure_socket()
+        self.bind()
 
         threads = [
-            threading.Thread(target=self.update_loop),
             threading.Thread(target=self.receive_loop),
         ]
 
-        for thread in threads:
-            thread.start()
+        if self._on_start is not None:
+            threads.append(threading.Thread(target=self._on_start))
 
-        for thread in threads:
-            thread.join()
+        for t in threads:
+            t.daemon = True
+            t.start()
+
+        # Update loop is in Python, meaning signals are handled.
+        self.update_loop()
 
     # Decorators
-    def data_handler(self, handler: SyncDataHandler) -> SyncDataHandler:
+    def on_data(self, handler: SyncDataHandler) -> SyncDataHandler:
         """Registers a data handler to be called when data is received."""
 
         self._handler = handler
+        return handler
+
+    def on_start(self, handler: Callable[[], None]) -> Callable[[], None]:
+        """Registers a handler to be called when the client starts."""
+
+        self._on_start = handler
         return handler
