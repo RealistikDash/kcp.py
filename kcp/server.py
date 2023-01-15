@@ -10,7 +10,7 @@ from typing import Callable
 from typing import Optional
 
 from .exceptions import *
-from .extension import OldKCPControl
+from .extension import KCP
 from .utils import create_unique_token
 
 # We use asyncio's datagram protocol as it is the fastest way to
@@ -32,10 +32,13 @@ class KCPServerProtocol(asyncio.DatagramProtocol):
 
 @dataclass(slots=True)
 class Connection:
-    _kcp: OldKCPControl
+    _kcp: KCP
     _server: KCPServerAsync
     address: str
     port: int
+
+    def __post_init__(self) -> None:
+        self._kcp.include_outbound_handler(self._send_kcp)
 
     @property
     def address_tuple(self) -> AddressType:
@@ -45,19 +48,22 @@ class Connection:
         """Handles receiving data from the client."""
         self._kcp.receive(data)
 
-        # Handle data
-        return self._kcp.read_inbound()
+        while data := self._kcp.get_received():
+            server = self._server
+            server._loop.create_task(server._data_handler(self, data))
 
     def send(self, data: bytes) -> None:
-        self._kcp.send(data)
+        self._kcp.enqueue(data)
+
+    # Functions for the kcp extension
+    def _send_kcp(self, _, data: bytes) -> None:
+        self._server._transport.sendto(  # type: ignore
+            data,
+            self.address_tuple,
+        )
 
     def update(self, ts_ms: Optional[int] = None) -> None:
-        data = self._kcp.update(ts_ms)
-        if data is not None:
-            self._server._transport.sendto(  # type: ignore
-                data,
-                self.address_tuple,
-            )
+        self._kcp.update(ts_ms)
 
 
 AddressType = tuple[str | Any, int]
@@ -67,12 +73,13 @@ EventHandler = Callable[[], Awaitable[None]]
 
 # TODO: Just merge this with `KCPServerProtocol`.
 class KCPServerAsync:
-    def __init__(self, address: str, port: int, conv: int) -> None:
+    def __init__(self, address: str, port: int, conv: int, delay: int = 100) -> None:
         self.address = address
         self.port = port
         self._transport: Optional[transports.DatagramTransport] = None
         self._loop = asyncio.get_event_loop()
         self._conv = conv
+        self._delay = delay
 
         self._connections: dict[AddressType, Connection] = {}
 
@@ -86,14 +93,12 @@ class KCPServerAsync:
     def _handle_data(self, data: bytes, address: AddressType) -> None:
         connection = self._ensure_connection(address)
         res = connection.receive(data)
-        if res is not None:
-            self._loop.create_task(self._data_handler(connection, res))  # type: ignore
 
     def _ensure_connection(self, address: AddressType) -> Connection:
         connection = self._connections.get(address)
         if connection is None:
             connection = Connection(
-                _kcp=OldKCPControl(create_unique_token(), self._conv),
+                _kcp=KCP(self._conv, identity_token=create_unique_token()),
                 _server=self,
                 address=address[0],
                 port=address[1],
@@ -113,11 +118,11 @@ class KCPServerAsync:
 
         # Call the start event handler.
         if self._on_start is not None:
-            self._loop.create_task(self._on_start())
+            self._loop.create_task(self._on_start())  # type: ignore
 
         # Update connection timing information.
         while True:
-            await asyncio.sleep(0.1)
+            await asyncio.sleep(self._delay / 1000)
             ts_ms = time.perf_counter_ns() // 1000000
             for connection in self._connections.values():
                 connection.update(ts_ms)

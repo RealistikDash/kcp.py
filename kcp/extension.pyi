@@ -80,7 +80,7 @@ class KCP:
     def enqueue(self, data: bytes) -> None:
         """Enqueues raw data to be sent."""
         ...
-    def receive(self) -> bytes:
+    def receive(self, data: bytes) -> None:
         """Handles receiving KCP data and adds it to the internal buffer."""
         ...
     def get_received(self) -> bytes:

@@ -1,5 +1,5 @@
 from libc.stdint cimport *
-from cpython.bytes cimport PyBytes_AsString
+from cpython.bytes cimport PyBytes_FromStringAndSize
 from cpython cimport bool
 
 from .exceptions import *
@@ -240,7 +240,7 @@ import time
 
 # Internally used in KCP whenever data is ready to be sent.
 cdef int32_t pending_outbound_data(const char* buf, int32_t len, IKCPCB* kcp, void* user) with gil:
-    cdef OldKCPControl control = <OldKCPControl>user
+    cdef KCP control = <KCP>user
     control.handle_output(buf, len)
 
 cpdef get_current_time_ms():
@@ -262,7 +262,7 @@ cdef class KCP:
         int update_interval = 100,
         int resend_count = 2,
         bool no_congestion_control = False,
-        indentity_token = None,
+        identity_token = None,
     ):
         self._data_handler = None # Set by decorator.
         # Create base KCP object, passing self as the user data to be passed to the callback.
@@ -281,7 +281,7 @@ cdef class KCP:
             no_congestion_control
         )
 
-        self.set_maximum_transmission(mmax_transmissiontu)
+        self.set_maximum_transmission(max_transmission)
 
         self.identity_token = identity_token
 
@@ -334,7 +334,7 @@ cdef class KCP:
     # Gets the raw data received by KCP.
     cpdef bytearray get_received(self):
         # Check if there is any data to be received.
-        cdef int length = self.get_next_packet_size()
+        cdef int length = ikcp_peeksize(self.kcp)
         if length == -1:
             return bytearray()
 
@@ -373,7 +373,7 @@ cdef class KCP:
     # Connection settings functions
     # Sets the size of the max packet size that can be sent.
     cpdef set_maximum_transmission(self, int max_transmission):
-        ikcp_setmtu(self.kcp, mtu)
+        ikcp_setmtu(self.kcp, max_transmission)
 
     # Sets performance options for KCP.
     cpdef set_performance_options(
@@ -383,7 +383,13 @@ cdef class KCP:
         int resend_count,
         bool no_congestion_control,
     ):
-        ikcp_nodelay(self.kcp, <int32_t>no_delay, interval, resend, <int32_t>congestion_control)
+        ikcp_nodelay(
+            self.kcp,
+            <int32_t>no_delay,
+            update_interval,
+            resend_count,
+            <int32_t>no_congestion_control
+        )
 
     # Statistics functions
     # Returns the number of packets waiting to be sent.
