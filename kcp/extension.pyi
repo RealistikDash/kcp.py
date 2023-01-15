@@ -1,5 +1,6 @@
 from typing import Optional
 from typing import Callable
+from typing import Any
 
 class OldKCPControl:
     token: str  # The token used to identify the connection.
@@ -40,6 +41,7 @@ class OldKCPControl:
         ...
 
 class KCP:
+    identity_token: Any
     # Dunders
     def __init__(
         self,
@@ -49,11 +51,21 @@ class KCP:
         update_interval: int = 100,
         resend_count: int = 2,
         no_congestion_control: bool = False,
+        identity_token: Any = None,
     ) -> None:
         """Creates an instance of the KCP protocol.
 
         :param conv: The conversation ID. Must be equal on both ends of the
         connection.
+        :param max_transmission: The maximum transmission unit (MTU) of outbound
+        packets.
+        :param no_delay: Whether to enable no-delay mode.
+        :param update_interval: The internal update interval in milliseconds.
+        :param resend_count: The number of times to resend a packet if it is
+        not acknowledged.
+        :param no_congestion_control: Whether to disable congestion control.
+        :param identity_token: Any data that can be used to identify the
+        connection. This is not used by KCP itself.
         """
         ...
     # Handler configuration

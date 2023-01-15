@@ -252,6 +252,7 @@ cdef class KCP:
     cdef IKCPCB* kcp
     # Correctly annotating this causes a cython compiler crash LOL
     cdef _data_handler # type: Optional[OutboundDataHandler]
+    cdef public identity_token
 
     def __init__(
         self,
@@ -261,7 +262,7 @@ cdef class KCP:
         int update_interval = 100,
         int resend_count = 2,
         bool no_congestion_control = False,
-
+        indentity_token = None,
     ):
         self._data_handler = None # Set by decorator.
         # Create base KCP object, passing self as the user data to be passed to the callback.
@@ -281,6 +282,8 @@ cdef class KCP:
         )
 
         self.set_maximum_transmission(mmax_transmissiontu)
+
+        self.identity_token = identity_token
 
     cdef handle_output(self, const char* buf, int32_t len):
         # Create a bytes object from the buffer.
@@ -393,7 +396,8 @@ cdef class KCP:
 
     cpdef update_loop(self):
         # TODO: Perhaps add a way to stop the loop.
+        cdef int32_t next_update
         while True:
-            cdef int32_t next_update = self.update_check()
+            next_update = self.update_check()
             time.sleep(next_update / 1000)
             self.update()
