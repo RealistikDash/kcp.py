@@ -137,12 +137,10 @@ cdef bytearray receive_full_data(KCPControl control):
 cdef class KCPControl:
     cdef IKCPCB* kcp
     cdef bytes outbound
-    public:
-        cdef str token
+    cdef public str token
 
     def __init__(self, str token):
-        # TODO: Randomise conv
-        self.kcp = ikcp_create(32, <void*>self)
+        self.kcp = ikcp_create(id(token), <void*>self)
         ikcp_setoutput(self.kcp, set_outbound_data)
         self.outbound = b""
         self.token = token
