@@ -12,9 +12,9 @@ from .utils import create_unique_token
 SyncDataHandler = Callable[[bytes], None]
 
 
-class KCPClient:
+class KCPClientSync:
     def __init__(self, address: str, port: int) -> None:
-        """Configures a KCP client."""
+        """Configures a synchrnous KCP client."""
 
         self.address = address
         self.port = port
