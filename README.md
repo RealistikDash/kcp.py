@@ -9,7 +9,7 @@ KCP is a protocol focusing on low latency data delivery with a guarantee of data
 - [x] Pythonic API over said C bindings
 - [ ] Asynchronous KCP Client
 - [x] Synchronous KCP Client
-- [ ] Asynchronous KCP Server
+- [x] Asynchronous KCP Server
 - [ ] Full support for installation through pip
 
 ## Credit

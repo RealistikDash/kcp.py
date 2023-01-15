@@ -140,7 +140,7 @@ cdef class KCPControl:
     cdef public str token
 
     def __init__(self, str token):
-        self.kcp = ikcp_create(id(token), <void*>self)
+        self.kcp = ikcp_create(1, <void*>self)
         ikcp_setoutput(self.kcp, set_outbound_data)
         self.outbound = b""
         self.token = token
@@ -187,7 +187,9 @@ cdef class KCPControl:
         cdef char* buf = <char*>buffer
         cdef int32_t res = self.c_receive(buf, length)
 
-        if res < 0:
+        if res == -1:
+            raise KCPConvMismatchError
+        elif res < 0:
             raise KCPInputError(res)
 
     # This MAY return outbound

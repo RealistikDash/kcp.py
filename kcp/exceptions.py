@@ -19,3 +19,7 @@ class KCPError(KCPException):
 
 class KCPAsyncServerError(KCPException):
     pass
+
+
+class KCPConvMismatchError(KCPException):
+    pass
