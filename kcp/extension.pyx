@@ -255,7 +255,13 @@ cdef class KCP:
 
     def __init__(
         self,
-        int32_t conv_id,
+        int conv_id,
+        int max_transmission = 1400,
+        bool no_delay = False,
+        int update_interval = 100,
+        int resend_count = 2,
+        bool no_congestion_control = False,
+
     ):
         self._data_handler = None # Set by decorator.
         # Create base KCP object, passing self as the user data to be passed to the callback.
@@ -265,6 +271,16 @@ cdef class KCP:
         )
 
         ikcp_setoutput(self.kcp, pending_outbound_data)
+
+        # Set the perf config
+        self.set_performance_options(
+            no_delay,
+            update_interval,
+            resend_count,
+            no_congestion_control
+        )
+
+        self.set_maximum_transmission(mmax_transmissiontu)
 
     cdef handle_output(self, const char* buf, int32_t len):
         # Create a bytes object from the buffer.
@@ -353,7 +369,7 @@ cdef class KCP:
 
     # Connection settings functions
     # Sets the size of the max packet size that can be sent.
-    cpdef set_maximum_transmission(self, int32_t mtu):
+    cpdef set_maximum_transmission(self, int max_transmission):
         ikcp_setmtu(self.kcp, mtu)
 
     # Sets performance options for KCP.

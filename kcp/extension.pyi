@@ -44,6 +44,11 @@ class KCP:
     def __init__(
         self,
         conv: int,
+        max_transmission: int = 1400,
+        no_delay: bool = True,
+        update_interval: int = 100,
+        resend_count: int = 2,
+        no_congestion_control: bool = False,
     ) -> None:
         """Creates an instance of the KCP protocol.
 
@@ -88,8 +93,8 @@ class KCP:
         """Flushes the internal buffer to the outbound handler."""
         ...
     # Configuration
-    def set_maximum_transmission(self, mtu: int) -> None:
-        """Sets the max packet size."""
+    def set_maximum_transmission(self, max_transmission: int) -> None:
+        """Sets the MTU (maximum transmission unit)."""
         ...
     def set_performance_options(
         self,
@@ -104,7 +109,7 @@ class KCP:
         :param update_interval: The internal update interval in milliseconds.
         :param resend_count: The number of times to resend a packet if it is
         not acknowledged.
-        :param congestion_control: Whether to disable congestion control.
+        :param no_congestion_control: Whether to disable congestion control.
         """
         ...
     # Statistics
