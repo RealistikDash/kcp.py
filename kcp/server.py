@@ -1,14 +1,16 @@
-from .extension import KCPControl
-from .exceptions import *
+from __future__ import annotations
 
-from dataclasses import dataclass
-from typing import Callable
-from typing import Awaitable
-from typing import Optional
 import asyncio
-import socket
 import logging
+import socket
 import uuid
+from dataclasses import dataclass
+from typing import Awaitable
+from typing import Callable
+from typing import Optional
+
+from .exceptions import *
+from .extension import KCPControl
 
 
 @dataclass
@@ -35,14 +37,16 @@ class ConnectionContext:
         self._logger.debug(f"Sent data to client {self.token}@{self.address}:{self.port}")
 
     async def update(self, timestamp_ms: Optional[int] = None) -> None:
-        """Update the KCP connection. This will handle sending any queued data alongside 
+        """Update the KCP connection. This will handle sending any queued data alongside
         updating the timing of the connection. This should be called every 100ms or so."""
 
         queued = self._kcp.update(timestamp_ms)
         if queued:
             await self._send(queued)
 
+
 ConnectionHandler = Callable[[ConnectionContext], Awaitable[None]]
+
 
 class AsyncKCPServer:
     """An asynchronous KCP server running on top of a UDP socket."""
@@ -106,7 +110,7 @@ class AsyncKCPServer:
         self._connections.append(context)
 
         self._logger.info(f"Received connection from {sock_addr}:{sock_port}")
-        
+
         # Keep listening for data until the connection is closed.
         while True:
             data = await asyncio.get_event_loop().sock_recv(socket, 1024)
@@ -116,7 +120,7 @@ class AsyncKCPServer:
             context._kcp.receive(data)
             kcp_data = context._kcp.read_inbound()
             if kcp_data:
-                await self._handler(context) # type: ignore
+                await self._handler(context)  # type: ignore
 
     async def _create_update_loop(self) -> None:
         self._update_loop_task = asyncio.create_task(self._update_connection_loop())
@@ -124,6 +128,7 @@ class AsyncKCPServer:
     # Decorator to set the connection handler.
     async def on_data(self) -> Callable[[ConnectionHandler], ConnectionHandler]:
         """Decorator setting the handler for whenever data is received from a client."""
+
         def decorator(handler: ConnectionHandler) -> ConnectionHandler:
             self._handler = handler
             return handler
@@ -147,7 +152,7 @@ class AsyncKCPServer:
 
         if self._handler is None:
             raise KCPError(
-                "No connection handler was provided. Try using the @server.on_data decorator."
+                "No connection handler was provided. Try using the @server.on_data decorator.",
             )
 
         sock = self._configure_socket()

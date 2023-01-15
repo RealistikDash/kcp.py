@@ -125,7 +125,7 @@ cdef bytearray receive_full_data(KCPControl control):
         if length != 1024:
             data.extend(buffer[:length])
             break
-        
+
         data.extend(buffer)
 
         if len(data) > MAX_BUFFER_SIZE:

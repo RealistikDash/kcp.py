@@ -1,9 +1,12 @@
+from __future__ import annotations
+
 from os import getenv
 from pathlib import Path
 from shutil import copyfile as copy_file
 
 from entrypoint import entrypoint
-from setuptools import Distribution, Extension  # type: ignore
+from setuptools import Distribution
+from setuptools import Extension
 from setuptools.command.build_ext import build_ext  # type: ignore
 
 _TRUE_SET = frozenset(("1", "true", "t", "yes", "y"))
@@ -39,6 +42,7 @@ extensions = []
 
 if with_extensions:
     from Cython.Build import cythonize  # type: ignore
+
     extensions += cythonize(
         [Extension("kcp.extension", ["kcp/extension.pyx", "kcp/ikcp.c"])],
         language_level=LANGUAGE_LEVEL,
@@ -50,10 +54,12 @@ DIRECTORY = "kcp"
 
 
 def build() -> None:
-    distribution = Distribution({
-        "name": PACKAGE,
-        "ext_modules": extensions,
-    })
+    distribution = Distribution(
+        {
+            "name": PACKAGE,
+            "ext_modules": extensions,
+        },
+    )
 
     command = build_ext(distribution)
     command.ensure_finalized()  # type: ignore
