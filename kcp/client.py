@@ -6,7 +6,7 @@ import time
 from typing import Callable
 from typing import Optional
 
-from .extension import KCPControl
+from .extension import OldKCPControl
 from .utils import create_unique_token
 
 SyncDataHandler = Callable[[bytes], None]
@@ -19,7 +19,7 @@ class KCPClientSync:
         self.address = address
         self.port = port
         self._sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM, 0)
-        self._kcp = KCPControl(create_unique_token(), conv)
+        self._kcp = OldKCPControl(create_unique_token(), conv)
         # Port 0 means the OS will pick a random port.
         self._local_port = 0
 

@@ -10,7 +10,7 @@ from typing import Callable
 from typing import Optional
 
 from .exceptions import *
-from .extension import KCPControl
+from .extension import OldKCPControl
 from .utils import create_unique_token
 
 # We use asyncio's datagram protocol as it is the fastest way to
@@ -32,7 +32,7 @@ class KCPServerProtocol(asyncio.DatagramProtocol):
 
 @dataclass(slots=True)
 class Connection:
-    _kcp: KCPControl
+    _kcp: OldKCPControl
     _server: KCPServerAsync
     address: str
     port: int
@@ -93,7 +93,7 @@ class KCPServerAsync:
         connection = self._connections.get(address)
         if connection is None:
             connection = Connection(
-                _kcp=KCPControl(create_unique_token(), self._conv),
+                _kcp=OldKCPControl(create_unique_token(), self._conv),
                 _server=self,
                 address=address[0],
                 port=address[1],

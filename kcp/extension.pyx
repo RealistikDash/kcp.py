@@ -1,5 +1,6 @@
 from libc.stdint cimport *
-from cpython.bytes cimport PyBytes_AsString, PyBytes_FromStringAndSize
+from cpython.bytes cimport PyBytes_AsString
+from cpython cimport bool
 
 from .exceptions import *
 
@@ -107,13 +108,13 @@ cdef extern from "ikcp.h":
     void ikcp_wndsize(IKCPCB *kcp, int32_t sndwnd, int32_t rcvwnd)
 
 cdef int32_t set_outbound_data(const char* buf, int32_t len, IKCPCB* kcp, void* user) with gil:
-    cdef KCPControl control = <KCPControl>user
+    cdef OldKCPControl control = <OldKCPControl>user
 
     # Convert buffer to bytes
     cdef bytes data = PyBytes_FromStringAndSize(buf, len)
     control.outbound = data
 
-cdef bytearray receive_full_data(KCPControl control):
+cdef bytearray receive_full_data(OldKCPControl control):
     cdef bytearray data = bytearray()
     cdef char buffer[1024]
     cdef int32_t length
@@ -132,7 +133,9 @@ cdef bytearray receive_full_data(KCPControl control):
     return data
 
 # OOP Python interface
-cdef class KCPControl:
+
+# DEPRECATED
+cdef class OldKCPControl:
     cdef IKCPCB* kcp
     cdef bytes outbound
     cdef public str token
@@ -191,7 +194,7 @@ cdef class KCPControl:
         if res == -1:
             raise KCPBufferError
         elif res < -1:
-            raise KCPError(res)
+            raise KCPException(res)
 
     cpdef void receive(self, bytes buffer):
         cdef int32_t length = len(buffer)
@@ -204,7 +207,7 @@ cdef class KCPControl:
             raise KCPInputError(res)
 
     # This MAY return outbound
-    cpdef bytes update(self, ts_ms = None):
+    cpdef bytes update(self, ts_ms: Optional[int] = None):
         # TODO: Use way faster clock
         if ts_ms is None:
             ts_ms = time.perf_counter_ns() // 1000000
@@ -228,3 +231,153 @@ cdef class KCPControl:
     # Maximum Transmission Unit
     cpdef set_mtu(self, int32_t mtu):
         self.c_set_mtu(mtu)
+
+
+## NEW KCP
+import time
+
+#OutboundDataHandler = Callable[[KCP, bytes], None]
+
+# Internally used in KCP whenever data is ready to be sent.
+cdef int32_t pending_outbound_data(const char* buf, int32_t len, IKCPCB* kcp, void* user) with gil:
+    cdef OldKCPControl control = <OldKCPControl>user
+    control.handle_output(buf, len)
+
+cpdef get_current_time_ms():
+    # Use perf counter as it isnt affected by system time changes.
+    return time.perf_counter_ns() // 1000000
+
+
+cdef class KCP:
+    cdef IKCPCB* kcp
+    # Correctly annotating this causes a cython compiler crash LOL
+    cdef _data_handler # type: Optional[OutboundDataHandler]
+
+    def __init__(
+        self,
+        int32_t conv_id,
+    ):
+        self._data_handler = None # Set by decorator.
+        # Create base KCP object, passing self as the user data to be passed to the callback.
+        self.kcp = ikcp_create(
+            conv_id,
+            <void*>self,
+        )
+
+        ikcp_setoutput(self.kcp, pending_outbound_data)
+
+    cdef handle_output(self, const char* buf, int32_t len):
+        # Create a bytes object from the buffer.
+        cdef bytes data = PyBytes_FromStringAndSize(buf, len)
+        self._data_handler(self, data)
+
+    # Setting the handler for outbound data.
+    def include_outbound_handler(self, handler):
+        self._data_handler = handler
+
+    # Decorator
+    def outbound_handler(self, handler):
+        self.include_outbound_handler(handler)
+        return handler
+
+    # I/O functions
+    cpdef enqueue(self, bytes data):
+        if self._data_handler is None:
+            raise KCPException(
+                "No outbound handler set. Cannot enqueue data. "
+                "Try using the outbound_handler decorator."
+            )
+
+        cdef int32_t length = len(data)
+        cdef char* buf = <char*>data
+        cdef int32_t res = ikcp_send(self.kcp, buf, length)
+
+        # Error handling
+        if res == -1:
+            raise KCPBufferError("Buffer enqueued is empty.")
+
+        # TODO: Add exceptions for other errors.
+        elif res < -1:
+            raise KCPException(res)
+
+    cpdef receive(self, bytes data):
+        cdef int32_t length = len(data)
+        cdef char* buf = <char*>data
+        cdef int32_t res = ikcp_input(self.kcp, buf, length)
+
+        # Error handling
+        if res == -1:
+            # TODO: This can also mean just invalid data.
+            raise KCPConvMismatchError("The conversation ID does not match.")
+        elif res < -1:
+            raise KCPException(res)
+
+    # Gets the raw data received by KCP.
+    cpdef bytearray get_received(self):
+        # Check if there is any data to be received.
+        cdef int length = self.get_next_packet_size()
+        if length == -1:
+            return bytearray()
+
+        # Create a buffer to store the data.
+        cdef buf = bytearray(length)
+
+        # Receive the data.
+        cdef int32_t res = ikcp_recv(self.kcp, buf, length)
+        if res < 0:
+            # Theoretically this should never happen.
+            raise KCPException(res)
+
+        return buf
+
+
+    # Updates timing information for KCP, may call the outbound handler. Should be regularly called.
+    cpdef update(self, ts_ms: Optional[int] = None):
+        # Use python's time module if no timestamp is provided.
+        if ts_ms is None:
+            ts_ms = get_current_time_ms()
+
+        ikcp_update(self.kcp, ts_ms)
+
+    # Checks when the next update should be called (in ms).
+    cpdef int32_t update_check(self, ts_ms: Optional[int] = None):
+        # Use python's time module if no timestamp is provided.
+        if ts_ms is None:
+            ts_ms = get_current_time_ms()
+
+        return ikcp_check(self.kcp, ts_ms)
+
+    # Flushes the outbound data, calling the outbound handler if there is data.
+    cpdef flush(self):
+        ikcp_flush(self.kcp)
+
+    # Connection settings functions
+    # Sets the size of the max packet size that can be sent.
+    cpdef set_maximum_transmission(self, int32_t mtu):
+        ikcp_setmtu(self.kcp, mtu)
+
+    # Sets performance options for KCP.
+    cpdef set_performance_options(
+        self,
+        bool no_delay,
+        int update_interval,
+        int resend_count,
+        bool no_congestion_control,
+    ):
+        ikcp_nodelay(self.kcp, <int32_t>no_delay, interval, resend, <int32_t>congestion_control)
+
+    # Statistics functions
+    # Returns the number of packets waiting to be sent.
+    cpdef int32_t get_outbound_packets(self):
+        return ikcp_waitsnd(self.kcp)
+
+    # Returns the size of the next packet to be received.
+    cpdef int32_t get_next_packet_size(self):
+        return ikcp_peeksize(self.kcp)
+
+    cpdef update_loop(self):
+        # TODO: Perhaps add a way to stop the loop.
+        while True:
+            cdef int32_t next_update = self.update_check()
+            time.sleep(next_update / 1000)
+            self.update()

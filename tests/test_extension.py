@@ -1,11 +1,11 @@
 from __future__ import annotations
 
-from kcp.extension import KCPControl
+from kcp.extension import OldKCPControl
 
 
 def test_reversability():
     SEND_DATA = b"Your father is dead."
-    con = KCPControl("")
+    con = OldKCPControl("")
     con.update()
     con.send(SEND_DATA)
     outbound = con.read_outbound()
