@@ -244,9 +244,6 @@ cdef class KCP:
             ts_ms = self._clock.get_time()
 
         ikcp_update(self.kcp, ts_ms)
-        # TODO: I don't know whether this is the right place to call this,
-        # but not calling flush causes a memory leak.
-        self.flush()
 
     # Checks when the next update should be called (in ms).
     cpdef int update_check(self, ts_ms: Optional[int] = None):
