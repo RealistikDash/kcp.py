@@ -7,7 +7,7 @@ class KCP:
     # Dunders
     def __init__(
         self,
-        conv: int,
+        conv_id: int,
         max_transmission: int = 1400,
         no_delay: bool = True,
         update_interval: int = 100,
@@ -17,7 +17,7 @@ class KCP:
     ) -> None:
         """Creates an instance of the KCP protocol.
 
-        :param conv: The conversation ID. Must be equal on both ends of the
+        :param conv_id: The conversation ID. Must be equal on both ends of the
         connection.
         :param max_transmission: The maximum transmission unit (MTU) of outbound
         packets.

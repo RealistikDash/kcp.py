@@ -9,3 +9,4 @@ __license__ = "MIT"
 from .client import KCPClientSync
 from .server import Connection
 from .server import KCPServerAsync
+from .extension import KCP
