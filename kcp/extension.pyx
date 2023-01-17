@@ -114,6 +114,9 @@ cdef int32_t pending_outbound_data(const char* buf, int32_t len, IKCPCB* kcp, vo
     cdef KCP control = <KCP>user
     control.handle_output(buf, len)
 
+cpdef get_current_time_ms():
+    # Use perf counter as it isnt affected by system time changes.
+    return time.perf_counter_ns() // 1000000
 
 cdef class Clock:
     cdef uint64_t start_time
@@ -124,8 +127,7 @@ cdef class Clock:
         self.last_time = self.start_time
 
     cpdef uint32_t get_time(self):
-        # Use perf counter as it isnt affected by system time changes.
-        res = (time.perf_counter_ns() // 1000000) - self.start_time
+        res = get_current_time_ms() - self.start_time
         self.last_time = res
         return <uint32_t>res
 
@@ -242,6 +244,9 @@ cdef class KCP:
             ts_ms = self._clock.get_time()
 
         ikcp_update(self.kcp, ts_ms)
+        # TODO: I don't know whether this is the right place to call this,
+        # but not calling flush causes a memory leak.
+        self.flush()
 
     # Checks when the next update should be called (in ms).
     cpdef int update_check(self, ts_ms: Optional[int] = None):
@@ -250,11 +255,6 @@ cdef class KCP:
             ts_ms = self._clock.get_time()
 
         cdef res = ikcp_check(self.kcp, ts_ms)
-
-        if res < 0:
-            raise KCPException(
-                "Incorrect timing information."
-            )
 
         # TODO: This feels wrong. Possibly covering up a bigger issue.
         return res - self._clock.last_time
