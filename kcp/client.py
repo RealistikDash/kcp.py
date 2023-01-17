@@ -47,7 +47,6 @@ class KCPClientSync:
         self._send_raw_data(data)
 
     def _receive(self, data: bytes) -> None:
-        print("Received data", data)
         self._kcp.receive(data)
 
         # Handle data
