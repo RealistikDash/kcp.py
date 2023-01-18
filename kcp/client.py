@@ -50,7 +50,7 @@ class KCPClientSync:
         self._kcp.receive(data)
 
         # Handle data
-        while data := self._kcp.get_received():
+        for data in self._kcp.get_all_received():
             self._handle_data(data)
 
     def _wait_for_address(self) -> None:

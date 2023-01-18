@@ -47,9 +47,10 @@ class Connection:
         """Handles receiving data from the client."""
         self._kcp.receive(data)
 
-        while data := self._kcp.get_received():
-            server = self._server
-            server._loop.create_task(server._data_handler(self, data))  # type: ignore
+        for data in self._kcp.get_all_received():
+            self._server._loop.create_task(
+                self._server._data_handler(self, data),  # type: ignore
+            )
 
     def send(self, data: bytes) -> None:
         self._kcp.enqueue(data)
