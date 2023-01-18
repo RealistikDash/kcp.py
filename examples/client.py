@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import time
+
 from kcp import KCPClientSync
 
 client = KCPClientSync(
@@ -20,6 +22,7 @@ def on_start() -> None:
 
     while True:
         client.send(b"POLSKA GUROM!!")
+        time.sleep(0.1)
 
 
 client.start()

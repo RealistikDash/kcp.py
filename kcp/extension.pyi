@@ -1,6 +1,7 @@
 from typing import Optional
 from typing import Callable
 from typing import Any
+from typing import Generator
 
 class KCP:
     identity_token: Any
@@ -47,9 +48,6 @@ class KCP:
         ...
     def get_received(self) -> bytearray:
         """Returns the next received packet of data."""
-        ...
-    def get_all_received(self) -> list[bytearray]:
-        """Returns all individual received packets of data as a list."""
         ...
     def update(self, ts_ms: Optional[int] = None) -> None:
         """Updates the connection timing information, potentially calling
@@ -105,6 +103,10 @@ class KCP:
     @property
     def next_packet_available(self) -> bool:
         """Returns whether there is a packet available to be received."""
+        ...
+    # Generators
+    def get_all_received(self) -> Generator[bytearray, None, None]:
+        """Returns a generator that yields all received packets of data."""
         ...
 
 OutboundDataHandler = Callable[[KCP, bytes], None]
