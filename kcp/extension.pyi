@@ -45,8 +45,11 @@ class KCP:
     def receive(self, data: bytes) -> None:
         """Handles receiving KCP data and adds it to the internal buffer."""
         ...
-    def get_received(self) -> bytes:
+    def get_received(self) -> bytearray:
         """Returns the next received packet of data."""
+        ...
+    def get_all_received(self) -> list[bytearray]:
+        """Returns all individual received packets of data as a list."""
         ...
     def update(self, ts_ms: Optional[int] = None) -> None:
         """Updates the connection timing information, potentially calling
@@ -97,6 +100,11 @@ class KCP:
     def update_loop(self) -> None:
         """A blocking loop that continuously updates the connection
         according to `update_check()`."""
+        ...
+    # Properties
+    @property
+    def next_packet_available(self) -> bool:
+        """Returns whether there is a packet available to be received."""
         ...
 
 OutboundDataHandler = Callable[[KCP, bytes], None]

@@ -237,6 +237,16 @@ cdef class KCP:
         return buf
 
 
+    cpdef list get_all_received(self):
+        cdef list res = []
+
+        # Use the function for performance
+        while ikcp_peeksize(self.kcp) != -1:
+            res.append(self.get_received())
+
+        return res
+
+
     # Updates timing information for KCP, may call the outbound handler. Should be regularly called.
     cpdef update(self, ts_ms: Optional[int] = None):
         # Use python's time module if no timestamp is provided.
@@ -297,3 +307,9 @@ cdef class KCP:
             next_update = self.update_check()
             time.sleep(next_update / 1000)
             self.update()
+
+
+    # Properties
+    @property
+    def next_packet_available(self):
+        return self.get_next_packet_size() != -1
