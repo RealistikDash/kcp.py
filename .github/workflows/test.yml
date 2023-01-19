@@ -35,4 +35,4 @@ jobs:
         run: poetry install --with test
 
       - name: Run tests
-        run: poetry run pytest --cov-report xml
+        run: poetry run pytest
