@@ -9,11 +9,12 @@ readme = "README.md"
 
 homepage = "https://github.com/RealistikDash/kcp.py"
 repository = "https://github.com/RealistikDash/kcp.py"
+documentation = "https://github.com/RealistikDash/kcp.py"
 
-keywords = ["kcp", "python"]
+keywords = ["kcp", "server", "client", "async", "asyncio"]
 
 classifiers = [
-    "Development Status :: 2 - Pre-Alpha",
+    "Development Status :: 2 - Production/Stable",
     "Intended Audience :: Developers",
     "Operating System :: OS Independent",
     "Topic :: Utilities",
@@ -67,6 +68,20 @@ optional = true
 [tool.poetry.group.test.dependencies]
 pytest = "7.1.3"
 
+[tool.poetry.group.docs]
+optional = true
+
+[tool.poetry.group.docs.dependencies]
+mkdocs = "1.3.1"
+mkdocs-material = "8.5.3"
+
+[tool.poetry.group.docs.dependencies.mkdocstrings]
+version = "0.19.0"
+extras = ["python"]
+
+[tool.poetry.group.dev.dependencies]
+changelogging = "1.0.0"
+
 [tool.black]
 line_length = 100
 
@@ -76,3 +91,32 @@ profile = "black"
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+
+[tool.mypy]
+show_column_numbers = true
+
+disallow_any_decorated = true
+disallow_any_generics = true
+warn_return_any = true
+
+no_implicit_optional = true
+strict_optional = true
+
+strict_equality = true
+
+disallow_untyped_calls = true
+disallow_untyped_defs = true
+disallow_untyped_decorators = true
+disallow_untyped_globals = true
+
+disallow_incomplete_defs = true
+
+warn_no_return = true
+warn_unreachable = true
+
+warn_redundant_casts = true
+warn_unused_ignores = false  # compatibility
+
+[build-system]
+requires = ["poetry-core >= 1.3.2", "cython >= 0.29.32", "entrypoint >= 1.3.0", "setuptools >= 65.6.3"]
+build-backend = "poetry.core.masonry.api"
