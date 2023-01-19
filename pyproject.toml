@@ -1,7 +1,7 @@
 [tool.poetry]
 name = "kcp.py"
-version = "0.1.0"
-description = "Python bindings and abstarctions over the KCP protocol."
+version = "0.1.1"
+description = "Python bindings and networking for the KCP protocol."
 authors = ["RealistikDash"]
 license = "MIT"
 
@@ -14,7 +14,7 @@ documentation = "https://github.com/RealistikDash/kcp.py"
 keywords = ["kcp", "server", "client", "async", "asyncio"]
 
 classifiers = [
-    "Development Status :: 2 - Production/Stable",
+    "Development Status :: 4 - Beta",
     "Intended Audience :: Developers",
     "Operating System :: OS Independent",
     "Topic :: Utilities",
