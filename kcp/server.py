@@ -12,22 +12,6 @@ from typing import Optional
 from .exceptions import *
 from .extension import KCP
 
-# We use asyncio's datagram protocol as it is the fastest way to
-# implement a UDP server. We are probably not using it the intended
-# way, but it works.
-class KCPServerProtocol(asyncio.DatagramProtocol):
-    """Implements a KCP server protocol for asyncio."""
-
-    transport: transports.DatagramTransport
-    server: KCPServerAsync
-
-    def __init__(self, server: KCPServerAsync) -> None:
-        self.server = server
-        super().__init__()
-
-    def datagram_received(self, data: bytes, addr: AddressType) -> None:
-        self.server._handle_data(data, addr)
-
 
 @dataclass(slots=True)
 class Connection:
@@ -82,8 +66,7 @@ DataHandler = Callable[[Connection, bytes], Awaitable[None]]
 EventHandler = Callable[[], Awaitable[None]]
 
 
-# TODO: Just merge this with `KCPServerProtocol`.
-class KCPServerAsync:
+class KCPServerAsync(asyncio.DatagramProtocol):
     def __init__(
         self,
         address: str,
@@ -114,6 +97,8 @@ class KCPServerAsync:
         connection = self._ensure_connection(address)
         connection.receive(data)
 
+    datagram_received = _handle_data  # type: ignore
+
     def _ensure_connection(self, address: AddressType) -> Connection:
         connection = self._connections.get(address)
         if connection is None:
@@ -131,7 +116,7 @@ class KCPServerAsync:
     async def listen(self) -> None:
         """Starts listening for connections alongside the KCP update loop."""
         transport, _ = await self._loop.create_datagram_endpoint(
-            lambda: KCPServerProtocol(self),
+            lambda: self,  # type: ignore
             local_addr=(self.address, self.port),
         )
         self._transport = transport
