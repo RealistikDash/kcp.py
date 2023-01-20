@@ -35,9 +35,11 @@ class Connection:
     _server: KCPServerAsync
     address: str
     port: int
+    last_active: float = 0
 
     def __post_init__(self) -> None:
         self._kcp.include_outbound_handler(self._send_kcp)
+        self.last_active = time.perf_counter()
 
     @property
     def address_tuple(self) -> AddressType:
@@ -46,6 +48,8 @@ class Connection:
     def receive(self, data: bytes) -> Optional[bytes]:
         """Handles receiving data from the client."""
         self._kcp.receive(data)
+
+        self.last_active = time.perf_counter()
 
         for data in self._kcp.get_all_received():
             self._server._loop.create_task(
@@ -73,7 +77,14 @@ EventHandler = Callable[[], Awaitable[None]]
 
 # TODO: Just merge this with `KCPServerProtocol`.
 class KCPServerAsync:
-    def __init__(self, address: str, port: int, conv: int, delay: int = 100) -> None:
+    def __init__(
+        self,
+        address: str,
+        port: int,
+        conv: int,
+        delay: int = 100,
+        connection_timeout: int = 600,
+    ) -> None:
         self.address = address
         self.port = port
         self._transport: Optional[transports.DatagramTransport] = None
@@ -82,6 +93,7 @@ class KCPServerAsync:
         self._delay = delay
 
         self._connections: dict[AddressType, Connection] = {}
+        self.connection_timeout = connection_timeout
 
         # Event handlers
         self._data_handler: Optional[DataHandler] = None
@@ -109,7 +121,7 @@ class KCPServerAsync:
 
     # Public API
     async def listen(self) -> None:
-        transport, protocol = await self._loop.create_datagram_endpoint(
+        transport, _ = await self._loop.create_datagram_endpoint(
             lambda: KCPServerProtocol(self),
             local_addr=(self.address, self.port),
         )
@@ -121,9 +133,17 @@ class KCPServerAsync:
 
         # Update connection timing information.
         while True:
+            current_time = time.perf_counter()
+            current_time_ms = int(current_time * 1000)
             await asyncio.sleep(self._delay / 1000)
-            for connection in self._connections.values():
-                connection.update()
+            # Create a copy of the connections to avoid a modifying dictionary
+            # while iterating over it.
+            for connection in tuple(self._connections.values()):
+                connection.update(current_time_ms)
+
+                # Cleaning up unused connections.
+                if current_time - connection.last_active > self.connection_timeout:
+                    self._connections.pop(connection.address_tuple)
 
     def start(self) -> None:
         self._loop.run_until_complete(self.listen())
