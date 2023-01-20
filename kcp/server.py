@@ -45,7 +45,7 @@ class Connection:
     def address_tuple(self) -> AddressType:
         return self.address, self.port
 
-    def receive(self, data: bytes) -> Optional[bytes]:
+    def receive(self, data: bytes) -> None:
         """Handles receiving data from the client."""
         self._kcp.receive(data)
 
@@ -112,7 +112,7 @@ class KCPServerAsync:
     # Called by the protocol.
     def _handle_data(self, data: bytes, address: AddressType) -> None:
         connection = self._ensure_connection(address)
-        res = connection.receive(data)
+        connection.receive(data)
 
     def _ensure_connection(self, address: AddressType) -> Connection:
         connection = self._connections.get(address)
