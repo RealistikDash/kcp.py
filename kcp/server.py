@@ -56,7 +56,8 @@ class Connection:
                 self._server._data_handler(self, data),  # type: ignore
             )
 
-    def send(self, data: bytes) -> None:
+    def enqueue(self, data: bytes) -> None:
+        """Enqueues data to be sent to the client."""
         self._kcp.enqueue(data)
 
     # Functions for the kcp extension
@@ -67,6 +68,12 @@ class Connection:
         )
 
     def update(self, ts_ms: Optional[int] = None) -> None:
+        """Updates the timing information for the connection. May cause data
+        to be sent to the client.
+
+        :param ts_ms: The current time in milliseconds. If not provided, the
+            the time will be calculated.
+        """
         self._kcp.update(ts_ms)
 
 
@@ -94,6 +101,7 @@ class KCPServerAsync:
 
         self._connections: dict[AddressType, Connection] = {}
         self.connection_timeout = connection_timeout
+        self._closed = False
 
         # Event handlers
         self._data_handler: Optional[DataHandler] = None
@@ -121,6 +129,7 @@ class KCPServerAsync:
 
     # Public API
     async def listen(self) -> None:
+        """Starts listening for connections alongside the KCP update loop."""
         transport, _ = await self._loop.create_datagram_endpoint(
             lambda: KCPServerProtocol(self),
             local_addr=(self.address, self.port),
@@ -132,7 +141,7 @@ class KCPServerAsync:
             self._loop.create_task(self._on_start())  # type: ignore
 
         # Update connection timing information.
-        while True:
+        while not self._closed:
             current_time = time.perf_counter()
             current_time_ms = int(current_time * 1000)
             await asyncio.sleep(self._delay / 1000)
@@ -145,18 +154,38 @@ class KCPServerAsync:
                 if current_time - connection.last_active > self.connection_timeout:
                     self._connections.pop(connection.address_tuple)
 
+        # Handle cleanup.
+        self._transport.close()
+        self._transport = None
+        self._connections.clear()
+
+        if self._on_stop is not None:
+            await self._on_stop()
+
     def start(self) -> None:
+        """Creates the event loop and starts listening for connections."""
         self._loop.run_until_complete(self.listen())
+
+    def stop(self) -> None:
+        """Tells the server to stop listening for connections after the next
+        update loop."""
+        self._closed = True
 
     # Decorators
     def on_data(self, handler: DataHandler) -> DataHandler:
+        """Decorator registering a handler which will be called when data is
+        received from a client."""
         self._data_handler = handler
         return handler
 
     def on_start(self, handler: EventHandler) -> EventHandler:
+        """Decorator registering a handler which will be called when the server
+        starts listening for connections."""
         self._on_start = handler
         return handler
 
     def on_stop(self, handler: EventHandler) -> EventHandler:
+        """Decorator registering a handler which will be called when the server
+        stops listening for connections."""
         self._on_stop = handler
         return handler
