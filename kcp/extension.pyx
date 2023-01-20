@@ -194,16 +194,15 @@ cdef class KCP:
                 "Try using the outbound_handler decorator."
             )
 
+        if not data:
+            raise ValueError("Cannot enqueue empty data.")
+
         cdef int32_t length = len(data)
         cdef char* buf = <char*>data
         cdef int32_t res = ikcp_send(self.kcp, buf, length)
 
         # Error handling
-        if res == -1:
-            raise KCPBufferError("Buffer enqueued is empty.")
-
-        # TODO: Add exceptions for other errors.
-        elif res < -1:
+        if res < 0:
             raise KCPException(res)
 
     cpdef receive(self, bytes data):
@@ -213,8 +212,9 @@ cdef class KCP:
 
         # Error handling
         if res == -1:
-            # TODO: This can also mean just invalid data.
-            raise KCPConvMismatchError("The conversation ID does not match.")
+            raise KCPConvMismatchError(
+                "The conversation ID mismatch or invalid data."
+            )
         elif res < -1:
             raise KCPException(res)
 
@@ -253,7 +253,7 @@ cdef class KCP:
 
         cdef res = ikcp_check(self.kcp, ts_ms)
 
-        # TODO: This feels wrong. Possibly covering up a bigger issue.
+        # TODO: This works, but idk if its the right way.
         return res - self._clock.last_time
 
     # Flushes the outbound data, calling the outbound handler if there is data.
