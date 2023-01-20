@@ -1,5 +1,5 @@
 # kcp.py
-Python bindings and abstractions for the KCP protocol.
+Python bindings and networking for the KCP protocol.
 
 ## What is KCP?
 KCP is a protocol focusing on low latency data delivery with a guarantee of data delivery. It serves as an alternative to the TCP protocol.
@@ -20,7 +20,7 @@ from kcp.server import KCPServerAsync
 server = KCPServerAsync(
     "127.0.0.1",
     9999,
-    conv=1,
+    conv_id=1,
 )
 
 
@@ -45,7 +45,7 @@ from kcp import KCPClientSync
 client = KCPClientSync(
     "127.0.0.1",
     9999,
-    conv=1,
+    conv_id=1,
 )
 
 

@@ -43,6 +43,7 @@ class Connection:
     def enqueue(self, data: bytes) -> None:
         """Enqueues data to be sent to the client."""
         self._kcp.enqueue(data)
+        self.last_active = time.perf_counter()
 
     # Functions for the kcp extension
     def _send_kcp(self, _, data: bytes) -> None:
@@ -71,15 +72,24 @@ class KCPServerAsync(asyncio.DatagramProtocol):
         self,
         address: str,
         port: int,
-        conv: int,
+        conv_id: int,
         delay: int = 100,
         connection_timeout: int = 600,
     ) -> None:
+        """Configures the asynchronous KCP server.
+
+        :param address: The address to listen on (usually `127.0.0.1`).
+        :param port: The port to listen on.
+        :param conv: The conversation number to use for the KCP protocol.
+        :param delay: The delay between KCP updates in milliseconds.
+        :param connection_timeout: The amount of time in seconds to wait before
+            cleaning up after a connection.
+        """
         self.address = address
         self.port = port
         self._transport: Optional[transports.DatagramTransport] = None
         self._loop = asyncio.get_event_loop()
-        self._conv = conv
+        self._conv = conv_id
         self._delay = delay
 
         self._connections: dict[AddressType, Connection] = {}

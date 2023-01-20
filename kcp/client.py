@@ -12,13 +12,13 @@ SyncDataHandler = Callable[[bytes], None]
 
 
 class KCPClientSync:
-    def __init__(self, address: str, port: int, conv: int) -> None:
+    def __init__(self, address: str, port: int, conv_id: int) -> None:
         """Configures a synchrnous KCP client."""
 
         self.address = address
         self.port = port
         self._sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM, 0)
-        self._kcp = KCP(conv)
+        self._kcp = KCP(conv_id)
         self._kcp.include_outbound_handler(self._send_kcp)
         # Port 0 means the OS will pick a random port.
         self._local_port = 0
