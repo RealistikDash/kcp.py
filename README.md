@@ -73,7 +73,7 @@ You may find more examples in the `examples` directory within the repo.
 - [ ] Asynchronous KCP Client
 - [x] Synchronous KCP Client
 - [x] Asynchronous KCP Server
-- [ ] Full support for installation through pip
+- [x] Full support for installation through pip
 
 ## Credit
 kcp.py uses [the official KCP implementation](https://github.com/skywind3000/kcp) behind the scenes.
