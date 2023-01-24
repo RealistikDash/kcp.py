@@ -136,7 +136,7 @@ class KCPServerAsync(asyncio.DatagramProtocol):
                 address=address[0],
                 port=address[1],
                 last_active=time.perf_counter(),
-                _data_mutators=self._data_mutators,
+                _data_mutators=self._data_mutators.copy(),
             )
             self._connections[address] = connection
 
