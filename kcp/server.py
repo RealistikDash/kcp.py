@@ -124,11 +124,9 @@ class KCPServerAsync(asyncio.DatagramProtocol):
 
     # Private API
     # Called by the protocol.
-    def _handle_data(self, data: bytes, address: AddressType) -> None:
+    def datagram_received(self, data: bytes, address: AddressType) -> None:
         connection = self._ensure_connection(address)
         connection.receive(data)
-
-    datagram_received = _handle_data  # type: ignore
 
     def _ensure_connection(self, address: AddressType) -> Connection:
         connection = self._connections.get(address)
