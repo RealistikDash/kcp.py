@@ -160,7 +160,6 @@ cdef class KCP:
 
         ikcp_setoutput(self.kcp, pending_outbound_data)
 
-        # Set the perf config
         self.set_performance_options(
             no_delay,
             update_interval,

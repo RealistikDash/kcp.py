@@ -164,7 +164,6 @@ class KCPServerAsync(asyncio.DatagramProtocol):
             for connection in tuple(self._connections.values()):
                 connection.update(current_time_ms)
 
-                # Cleaning up unused connections.
                 if current_time - connection.last_active > self.connection_timeout:
                     self._connections.pop(connection.address_tuple)
 
