@@ -14,6 +14,8 @@ class KCP:
         update_interval: int = 100,
         resend_count: int = 2,
         no_congestion_control: bool = False,
+        send_window_size: int = 32,
+        receive_window_size: int = 128,
         identity_token: Any = None,
     ) -> None:
         """Creates an instance of the KCP protocol.
@@ -85,6 +87,14 @@ class KCP:
         :param resend_count: The number of times to resend a packet if it is
         not acknowledged.
         :param no_congestion_control: Whether to disable congestion control.
+        """
+        ...
+    def set_window_size(self, send: int, receive: int) -> None:
+        """Sets the window (buffer) size for the connection.
+
+        :param send: The number of packets to send bnefore waiting for an
+        acknowledgement.
+        :param receive: The buffer size for received packets.
         """
         ...
     # Statistics

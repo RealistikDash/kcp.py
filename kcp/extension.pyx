@@ -147,6 +147,8 @@ cdef class KCP:
         int update_interval = 100,
         int resend_count = 2,
         bool no_congestion_control = False,
+        int send_window_size = 32,
+        int receive_window_size = 128,
         identity_token = None,
     ):
         self._data_handler = None # Set by decorator.
@@ -167,6 +169,8 @@ cdef class KCP:
         )
 
         self.set_maximum_transmission(max_transmission)
+
+        self.set_window_size(send_window_size, receive_window_size)
 
         self.identity_token = identity_token
 
@@ -297,6 +301,11 @@ cdef class KCP:
             next_update = self.update_check()
             time.sleep(next_update / 1000)
             self.update()
+
+
+    # https://github.com/skywind3000/kcp/issues/289#issuecomment-770767642
+    cpdef set_window_size(self, int send, int receive):
+        ikcp_wndsize(self.kcp, send, receive)
 
 
     # Properties
