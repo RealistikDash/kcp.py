@@ -6,7 +6,7 @@ from kcp.server import KCPServerAsync
 server = KCPServerAsync(
     "127.0.0.1",
     9999,
-    conv=1,
+    conv_id=1,
 )
 
 
