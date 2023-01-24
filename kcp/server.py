@@ -4,7 +4,6 @@ import asyncio
 import time
 from asyncio import transports
 from dataclasses import dataclass
-from dataclasses import field
 from typing import Any
 from typing import Awaitable
 from typing import Callable
@@ -79,7 +78,7 @@ class Connection:
         self._data_mutators.append(mutator)
 
 
-AddressType = tuple[str | Any, int]
+AddressType = tuple[Any, int]
 DataHandler = Callable[[Connection, bytes], Awaitable[None]]
 EventHandler = Callable[[], Awaitable[None]]
 
