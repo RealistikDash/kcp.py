@@ -10,7 +10,6 @@ from typing import Awaitable
 from typing import Callable
 from typing import Optional
 
-from .exceptions import *
 from .extension import KCP
 
 
