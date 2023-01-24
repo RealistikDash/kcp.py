@@ -23,12 +23,11 @@ class Connection:
     _server: KCPServerAsync
     address: str
     port: int
-    last_active: float = 0
-    _data_mutators: list[DataMutator] = field(default_factory=list)
+    last_active: float
+    _data_mutators: list[DataMutator]
 
     def __post_init__(self) -> None:
         self._kcp.include_outbound_handler(self._send_kcp)
-        self.last_active = time.perf_counter()
 
     @property
     def address_tuple(self) -> AddressType:
@@ -136,6 +135,8 @@ class KCPServerAsync(asyncio.DatagramProtocol):
                 _server=self,
                 address=address[0],
                 port=address[1],
+                last_active=time.perf_counter(),
+                _data_mutators=self._data_mutators,
             )
             self._connections[address] = connection
 
