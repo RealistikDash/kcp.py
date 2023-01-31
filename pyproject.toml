@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "kcp.py"
-version = "0.1.2"
+version = "0.1.3"
 description = "Python bindings and networking for the KCP protocol."
 authors = ["RealistikDash"]
 license = "MIT"
@@ -19,7 +19,7 @@ classifiers = [
     "Operating System :: OS Independent",
     "Topic :: Utilities",
     "Typing :: Typed",
-    "OSI Approved :: MIT License",
+    "License :: OSI Approved :: MIT License",
 ]
 
 [tool.poetry.urls]

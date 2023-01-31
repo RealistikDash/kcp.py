@@ -37,15 +37,16 @@ class Connection:
 
         return data
 
-    def receive(self, data: bytes) -> None:
+    async def receive(self, data: bytes) -> None:
         """Handles receiving data from the client."""
         self._kcp.receive(data)
 
         self.last_active = time.perf_counter()
+        assert self._server._data_handler is not None  # SHUT UP MYPY
 
         for data in self._kcp.get_all_received():
             data = self._perform_mutations(data)
-            await self._server._data_handler(self, data)  # type: ignore
+            await self._server._data_handler(self, data)
 
     def enqueue(self, data: bytes) -> None:
         """Enqueues data to be sent to the client."""
@@ -123,7 +124,7 @@ class KCPServerAsync(asyncio.DatagramProtocol):
     # Called by the protocol.
     def datagram_received(self, data: bytes, address: AddressType) -> None:
         connection = self._ensure_connection(address)
-        connection.receive(data)
+        self._loop.create_task(connection.receive(data))
 
     def _ensure_connection(self, address: AddressType) -> Connection:
         connection = self._connections.get(address)
