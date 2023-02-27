@@ -12,7 +12,7 @@ pip install kcp.py
 
 ## Examples
 ### Asynchronous Server
-kcp.py features an implementation of an asynchronous servers using the event loop protocol API.
+kcp.py features an implementation of an asynchronous server using the event loop protocol API.
 ```py
 from kcp.server import Connection
 from kcp.server import KCPServerAsync
@@ -38,7 +38,7 @@ server.start()
 ```
 
 ### Client
-kcp.py also implements a KCP clients using Python's sockets and threads.
+kcp.py also implements a KCP client using Python's sockets and threads.
 ```py
 from kcp import KCPClientSync
 
