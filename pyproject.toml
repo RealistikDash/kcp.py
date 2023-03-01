@@ -54,7 +54,7 @@ optional = true
 black = "22.8.0"
 
 [tool.poetry.group.format.dependencies.isort]
-version = "5.10.1"
+version = "5.11.5"
 python = "^3.7"
 
 [tool.poetry.group.test]
