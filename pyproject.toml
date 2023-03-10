@@ -68,7 +68,7 @@ optional = true
 
 [tool.poetry.group.docs.dependencies]
 mkdocs = "1.4.2"
-mkdocs-material = "9.1.0"
+mkdocs-material = "9.1.2"
 
 [tool.poetry.group.docs.dependencies.mkdocstrings]
 version = "0.20.0"
