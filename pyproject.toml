@@ -71,7 +71,7 @@ mkdocs = "1.4.2"
 mkdocs-material = "9.1.0"
 
 [tool.poetry.group.docs.dependencies.mkdocstrings]
-version = "0.20.0"
+version = "0.21.0"
 extras = ["python"]
 
 [tool.poetry.group.dev.dependencies]
