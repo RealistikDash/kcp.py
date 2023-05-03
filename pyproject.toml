@@ -67,7 +67,7 @@ pytest = "7.2.1"
 optional = true
 
 [tool.poetry.group.docs.dependencies]
-mkdocs = "1.4.2"
+mkdocs = "1.4.3"
 mkdocs-material = "9.1.0"
 
 [tool.poetry.group.docs.dependencies.mkdocstrings]
