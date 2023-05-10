@@ -15,7 +15,7 @@ from .extension import KCP
 DataMutator = Callable[[bytes], bytes]
 
 
-@dataclass()
+@dataclass
 class Connection:
     _kcp: KCP
     _server: KCPServerAsync
