@@ -75,7 +75,7 @@ version = "0.20.0"
 extras = ["python"]
 
 [tool.poetry.group.dev.dependencies]
-changelogging = "1.1.0"
+changelogging = "1.2.0"
 
 [tool.black]
 line_length = 100
