@@ -92,6 +92,12 @@ class KCPServerAsync(asyncio.DatagramProtocol):
         conv_id: int,
         delay: int = 100,
         connection_timeout: int = 600,
+        max_transmission: int = 1400,
+        no_delay: bool = False,
+        resend_count: int = 2,
+        no_congestion_control: bool = False,
+        receive_window_size: int = 128,
+        send_window_size: int = 32,
     ) -> None:
         """Configures the asynchronous KCP server.
 
@@ -101,7 +107,16 @@ class KCPServerAsync(asyncio.DatagramProtocol):
         :param delay: The delay between KCP updates in milliseconds.
         :param connection_timeout: The amount of time in seconds to wait before
             cleaning up after a connection.
+        :param max_transmission: The maximum transmission unit (MTU) of outbound
+            packets.
+        :param no_delay: Whether to enable no-delay mode.
+        :param resend_count: The number of times to resend a packet if it is
+            not acknowledged.
+        :param no_congestion_control: Whether to disable congestion control.
+        :param receive_window_size: The size of the receive window in packets.
+        :param send_window_size: The size of the send window in packets.
         """
+
         self.address = address
         self.port = port
         self._transport: Optional[transports.DatagramTransport] = None
@@ -120,6 +135,14 @@ class KCPServerAsync(asyncio.DatagramProtocol):
 
         self._data_mutators: list[DataMutator] = []
 
+        # Connection settings.
+        self._max_transmission = max_transmission
+        self._no_delay = no_delay
+        self._resend_count = resend_count
+        self._no_congestion_control = no_congestion_control
+        self._send_window_size = send_window_size
+        self._receive_window_size = receive_window_size
+
     # Private API
     # Called by the protocol.
     def datagram_received(self, data: bytes, address: AddressType) -> None:
@@ -129,8 +152,18 @@ class KCPServerAsync(asyncio.DatagramProtocol):
     def _ensure_connection(self, address: AddressType) -> Connection:
         connection = self._connections.get(address)
         if connection is None:
+            kcp = KCP(
+                self._conv,
+                max_transmission=self._max_transmission,
+                no_delay=self._no_delay,
+                update_interval=self._delay,
+                resend_count=self._resend_count,
+                no_congestion_control=self._no_congestion_control,
+                send_window_size=self._send_window_size,
+                receive_window_size=self._receive_window_size,
+            )
             connection = Connection(
-                _kcp=KCP(self._conv),
+                _kcp=kcp,
                 _server=self,
                 address=address[0],
                 port=address[1],
@@ -174,6 +207,31 @@ class KCPServerAsync(asyncio.DatagramProtocol):
 
         if self._on_stop is not None:
             await self._on_stop()
+
+    def set_performance_options(
+        self,
+        no_delay: bool,
+        update_interval: int,
+        resend_count: int,
+        no_congestion_control: bool,
+        receive_window_size: int,
+        send_window_size: int,
+    ) -> None:
+        """Configures the performance options for all **future** KCP connections.
+
+        :param no_delay: Whether to enable no-delay mode.
+        :param update_interval: The internal update interval in milliseconds.
+        :param resend_count: The number of times to resend a packet if it is
+        not acknowledged.
+        :param no_congestion_control: Whether to disable congestion control.
+        """
+
+        self._no_delay = no_delay
+        self._delay = update_interval
+        self._resend_count = resend_count
+        self._no_congestion_control = no_congestion_control
+        self._receive_window_size = receive_window_size
+        self._send_window_size = send_window_size
 
     def start(self) -> None:
         """Creates the event loop and starts listening for connections."""

@@ -155,3 +155,5 @@ test.py
 
 # Cython C files
 kcp/extension.c
+
+poetry.lock
