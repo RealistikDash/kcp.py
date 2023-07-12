@@ -2,24 +2,13 @@ from __future__ import annotations
 
 
 class KCPException(Exception):
-    pass
+    """A generic exception for a KCP connection."""
 
-
-class KCPInputError(KCPException):
-    pass
-
-
-class KCPEmptyBufferError(KCPException):
-    pass
-
-
-class KCPError(KCPException):
-    pass
-
-
-class KCPAsyncServerError(KCPException):
     pass
 
 
 class KCPConvMismatchError(KCPException):
+    """Raised when the conversation ID of a packet does not match the
+    conversation ID of the connection."""
+
     pass

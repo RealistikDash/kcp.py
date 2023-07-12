@@ -210,12 +210,12 @@ class KCPServerAsync(asyncio.DatagramProtocol):
 
     def set_performance_options(
         self,
-        no_delay: bool,
-        update_interval: int,
-        resend_count: int,
-        no_congestion_control: bool,
-        receive_window_size: int,
-        send_window_size: int,
+        no_delay: Optional[bool] = None,
+        update_interval: Optional[int] = None,
+        resend_count: Optional[int] = None,
+        no_congestion_control: Optional[bool] = None,
+        receive_window_size: Optional[int] = None,
+        send_window_size: Optional[int] = None,
     ) -> None:
         """Configures the performance options for all **future** KCP connections.
 
@@ -226,12 +226,20 @@ class KCPServerAsync(asyncio.DatagramProtocol):
         :param no_congestion_control: Whether to disable congestion control.
         """
 
-        self._no_delay = no_delay
-        self._delay = update_interval
-        self._resend_count = resend_count
-        self._no_congestion_control = no_congestion_control
-        self._receive_window_size = receive_window_size
-        self._send_window_size = send_window_size
+        self._no_delay = no_delay if no_delay is not None else self._no_delay
+        self._delay = update_interval if update_interval is not None else self._delay
+        self._resend_count = resend_count if resend_count is not None else self._resend_count
+        self._no_congestion_control = (
+            no_congestion_control
+            if no_congestion_control is not None
+            else self._no_congestion_control
+        )
+        self._receive_window_size = (
+            receive_window_size if receive_window_size is not None else self._receive_window_size
+        )
+        self._send_window_size = (
+            send_window_size if send_window_size is not None else self._send_window_size
+        )
 
     def start(self) -> None:
         """Creates the event loop and starts listening for connections."""

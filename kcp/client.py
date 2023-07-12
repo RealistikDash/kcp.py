@@ -109,7 +109,7 @@ class KCPClientSync:
         self._wait_for_address()
 
         while True:
-            data, address = self._sock.recvfrom(2048)
+            data, _ = self._sock.recvfrom(2048)
             self._receive(data)
 
     def start(self) -> None:
