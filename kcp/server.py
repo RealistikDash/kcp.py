@@ -37,11 +37,14 @@ class Connection:
 
         return data
 
+    def __update_activity(self) -> None:
+        self.last_active = time.perf_counter()
+
     async def receive(self, data: bytes) -> None:
         """Handles receiving data from the client."""
         self._kcp.receive(data)
 
-        self.last_active = time.perf_counter()
+        self.__update_activity()
         assert self._server._data_handler is not None  # SHUT UP MYPY
 
         for data in self._kcp.get_all_received():
@@ -51,7 +54,7 @@ class Connection:
     def enqueue(self, data: bytes) -> None:
         """Enqueues data to be sent to the client."""
         self._kcp.enqueue(data)
-        self.last_active = time.perf_counter()
+        self.__update_activity()
 
     # Functions for the kcp extension
     def _send_kcp(self, _, data: bytes) -> None:

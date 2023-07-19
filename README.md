@@ -44,7 +44,6 @@ async def on_data(connection: Connection, data: bytes) -> None:
 
 
 server.start()
-
 ```
 
 ### Client
