@@ -88,5 +88,5 @@ profile = "black"
 testpaths = ["tests"]
 
 [build-system]
-requires = ["poetry-core >= 1.3.2", "cython >= 0.29.32", "entrypoint >= 1.3.0", "setuptools >= 65.6.3"]
+requires = ["poetry-core >= 1.3.2", "cython == 0.29.32", "entrypoint >= 1.3.0", "setuptools >= 65.6.3"]
 build-backend = "poetry.core.masonry.api"
