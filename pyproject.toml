@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "kcp.py"
-version = "0.1.4"
+version = "0.1.5"
 description = "Python bindings and networking for the KCP protocol."
 authors = ["RealistikDash"]
 license = "MIT"
