@@ -61,7 +61,7 @@ python = "^3.7"
 optional = true
 
 [tool.poetry.group.test.dependencies]
-pytest = "7.2.1"
+pytest = "7.3.1"
 
 [tool.poetry.group.docs]
 optional = true
