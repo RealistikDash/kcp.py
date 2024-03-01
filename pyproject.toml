@@ -1,5 +1,5 @@
 [tool.poetry]
-name = "kcp.py"
+name = "kcp"
 version = "0.1.4"
 description = "Python bindings and networking for the KCP protocol."
 authors = ["RealistikDash"]

@@ -49,7 +49,7 @@ if with_extensions:
     )
 
 
-PACKAGE = "kcp.py"
+PACKAGE = "kcp"
 DIRECTORY = "kcp"
 
 

@@ -5,9 +5,9 @@ Python bindings and networking for the KCP protocol.
 KCP is a protocol focusing on low latency data delivery with a guarantee of data delivery. It serves as an alternative to the TCP protocol.
 
 ## How to install?
-kcp.py is available on [PyPi](https://pypi.org/project/kcp-py/), meaning installing is as simple as running
+kcp.py is available on [PyPi](https://pypi.org/project/kcp/), meaning installing is as simple as running
 ```sh
-pip install kcp.py
+pip install kcp
 ```
 
 ## Examples
