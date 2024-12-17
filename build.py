@@ -5,9 +5,9 @@ from pathlib import Path
 from shutil import copyfile as copy_file
 
 from entrypoint import entrypoint
-from setuptools import Distribution
-from setuptools import Extension
+from setuptools import Distribution, Extension
 from setuptools.command.build_ext import build_ext  # type: ignore
+
 
 _TRUE_SET = frozenset(("1", "true", "t", "yes", "y"))
 _FALSE_SET = frozenset(("0", "false", "f", "no", "n"))
@@ -15,37 +15,39 @@ _FALSE_SET = frozenset(("0", "false", "f", "no", "n"))
 
 def parse_bool(string: str) -> bool:
     string = string.casefold()
-
     if string in _TRUE_SET:
         return True
-
     if string in _FALSE_SET:
         return False
-
     raise ValueError(f"Can't parse {string!r} into `bool`")
 
 
-# C Extensions
+# Decide whether to build C extensions
 EXTENSIONS = getenv("KCP_PY_EXTENSIONS")
-
-if EXTENSIONS is None:
-    with_extensions = True
-
-else:
-    with_extensions = parse_bool(EXTENSIONS)
-
-
-LANGUAGE_LEVEL = "3"
-
+with_extensions = True if EXTENSIONS is None else parse_bool(EXTENSIONS)
 
 extensions = []
 
 if with_extensions:
     from Cython.Build import cythonize  # type: ignore
 
+    # Define your extension module(s). For Cython 3, you can use compiler_directives.
+    ext = Extension(
+        "kcp.extension",
+        sources=["kcp/extension.pyx", "kcp/ikcp.c"],
+        extra_compile_args=["-O3"],
+    )
+
     extensions += cythonize(
-        [Extension("kcp.extension", ["kcp/extension.pyx", "kcp/ikcp.c"])],
-        language_level=LANGUAGE_LEVEL,
+        [ext],
+        compiler_directives={
+            "language_level": 3,
+            "binding": True,
+            "embedsignature": True,
+            "cdivision": True,
+            "wraparound": False,
+            "boundscheck": False,
+        },
     )
 
 
@@ -54,24 +56,22 @@ DIRECTORY = "kcp"
 
 
 def build() -> None:
+    """Build the extension modules and copy them back into the package."""
     distribution = Distribution(
         {
             "name": PACKAGE,
             "ext_modules": extensions,
-        },
+        }
     )
-
     command = build_ext(distribution)
     command.ensure_finalized()  # type: ignore
     command.run()
 
-    # Copy built extensions back to the project
+    # Copy built extensions back to the project (so they're importable directly)
     for output in map(Path, command.get_outputs()):  # type: ignore
-        relative_extension = output.relative_to(command.build_lib)
-
         if not output.exists():
             continue
-
+        relative_extension = output.relative_to(command.build_lib)
         copy_file(output, relative_extension)
 
 

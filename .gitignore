@@ -157,3 +157,4 @@ test.py
 kcp/extension.c
 
 poetry.lock
+*.whl

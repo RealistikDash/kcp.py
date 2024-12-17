@@ -110,7 +110,7 @@ cdef extern from "ikcp.h":
 #OutboundDataHandler = Callable[[KCP, bytes], None]
 
 # Internally used in KCP whenever data is ready to be sent.
-cdef int32_t pending_outbound_data(const char* buf, int32_t len, IKCPCB* kcp, void* user) with gil:
+cdef int32_t pending_outbound_data(const char* buf, int32_t len, IKCPCB* kcp, void* user) noexcept with gil:
     cdef KCP control = <KCP>user
     control.handle_output(buf, len)
 
