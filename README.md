@@ -1,7 +1,7 @@
 # kcp.py
 Python bindings and networking for the KCP protocol.
 
-[此README同时也有中文版本](README_ZH.md)）
+[此README同时也有中文版本](README_ZH.md)
 
 ## What is KCP?
 KCP is a protocol focusing on low latency data delivery with a guarantee of data delivery. It serves as an alternative to the TCP protocol.
