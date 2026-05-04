@@ -1,7 +1,6 @@
-from typing import Optional
-from typing import Callable
+from collections.abc import Callable
+from collections.abc import Generator
 from typing import Any
-from typing import Generator
 
 class KCP:
     identity_token: Any
@@ -10,7 +9,7 @@ class KCP:
         self,
         conv_id: int,
         max_transmission: int = 1400,
-        no_delay: bool = True,
+        no_delay: bool = False,
         update_interval: int = 100,
         resend_count: int = 2,
         no_congestion_control: bool = False,
@@ -51,7 +50,7 @@ class KCP:
     def get_received(self) -> bytearray:
         """Returns the next received packet of data."""
         ...
-    def update(self, ts_ms: Optional[int] = None) -> None:
+    def update(self, ts_ms: int | None = None) -> None:
         """Updates the connection timing information, potentially calling
         the outbound handler. This should be regularly called (~10-100ms).
 
@@ -59,8 +58,9 @@ class KCP:
         it will be computed by the Python interpreter.
         """
         ...
-    def update_check(self, ts_ms: Optional[int] = None) -> bool:
-        """Checks when the next update should be called.
+    def update_check(self, ts_ms: int | None = None) -> int:
+        """Returns the number of milliseconds until the next update should
+        be called.
 
         :param ts_ms: The current time in milliseconds. If not provided,
         it will be computed by the Python interpreter.
@@ -118,5 +118,17 @@ class KCP:
     def get_all_received(self) -> Generator[bytearray, None, None]:
         """Returns a generator that yields all received packets of data."""
         ...
+
+class Clock:
+    def __init__(self) -> None: ...
+    def get_time(self) -> int:
+        """Returns ms elapsed since this Clock was created, and caches the
+        value internally so the next `get_time()` call can be avoided by
+        callers that already hold the timestamp."""
+        ...
+
+def get_current_time_ms() -> int:
+    """Returns the current monotonic time in milliseconds (perf-counter based)."""
+    ...
 
 OutboundDataHandler = Callable[[KCP, bytes], None]

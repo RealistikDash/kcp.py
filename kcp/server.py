@@ -3,14 +3,12 @@ from __future__ import annotations
 import asyncio
 import time
 from asyncio import transports
+from collections.abc import Awaitable
+from collections.abc import Callable
 from dataclasses import dataclass
 from typing import Any
-from typing import Awaitable
-from typing import Callable
-from typing import Optional
 
 from .extension import KCP
-
 
 DataMutator = Callable[[bytes], bytes]
 
@@ -63,7 +61,7 @@ class Connection:
             self.address_tuple,
         )
 
-    def update(self, ts_ms: Optional[int] = None) -> None:
+    def update(self, ts_ms: int | None = None) -> None:
         """Updates the timing information for the connection. May cause data
         to be sent to the client.
 
@@ -122,7 +120,7 @@ class KCPServerAsync(asyncio.DatagramProtocol):
 
         self.address = address
         self.port = port
-        self._transport: Optional[transports.DatagramTransport] = None
+        self._transport: transports.DatagramTransport | None = None
         self._loop = asyncio.get_event_loop()
         self._conv = conv_id
         self._delay = delay
@@ -132,9 +130,9 @@ class KCPServerAsync(asyncio.DatagramProtocol):
         self._closed = False
 
         # Event handlers
-        self._data_handler: Optional[DataHandler] = None
-        self._on_start: Optional[EventHandler] = None
-        self._on_stop: Optional[EventHandler] = None
+        self._data_handler: DataHandler | None = None
+        self._on_start: EventHandler | None = None
+        self._on_stop: EventHandler | None = None
 
         self._data_mutators: list[DataMutator] = []
 
@@ -213,12 +211,12 @@ class KCPServerAsync(asyncio.DatagramProtocol):
 
     def set_performance_options(
         self,
-        no_delay: Optional[bool] = None,
-        update_interval: Optional[int] = None,
-        resend_count: Optional[int] = None,
-        no_congestion_control: Optional[bool] = None,
-        receive_window_size: Optional[int] = None,
-        send_window_size: Optional[int] = None,
+        no_delay: bool | None = None,
+        update_interval: int | None = None,
+        resend_count: int | None = None,
+        no_congestion_control: bool | None = None,
+        receive_window_size: int | None = None,
+        send_window_size: int | None = None,
     ) -> None:
         """Configures the performance options for all **future** KCP connections.
 

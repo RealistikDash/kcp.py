@@ -152,6 +152,7 @@ cdef class KCP:
         identity_token = None,
     ):
         self._data_handler = None # Set by decorator.
+        self.kcp = NULL
         # Create base KCP object, passing self as the user data to be passed to the callback.
         self.kcp = ikcp_create(
             conv_id,
@@ -174,6 +175,11 @@ cdef class KCP:
         self.identity_token = identity_token
 
         self._clock = Clock() # todo: use a better clock
+
+    def __dealloc__(self):
+        if self.kcp is not NULL:
+            ikcp_release(self.kcp)
+            self.kcp = NULL
 
     cdef handle_output(self, const char* buf, int32_t len):
         # Create a bytes object from the buffer.

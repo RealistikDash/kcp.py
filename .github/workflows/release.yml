@@ -4,49 +4,76 @@ on:
   push:
     tags:
       - v*
+  workflow_dispatch:
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
 
 jobs:
-  release:
-    name: Release
-
+  build_wheels:
+    name: Wheels on ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
     strategy:
+      fail-fast: false
       matrix:
-        os: [ubuntu, windows, macos]
-        python-version: ["3.8", "3.9", "3.10", "3.11", "3.12", "3.13"]
-
-    defaults:
-      run:
-        shell: bash
-
-    runs-on: ${{ matrix.os }}-latest
-
+        include:
+          - os: ubuntu-latest
+            cibw_archs: x86_64
+          - os: ubuntu-24.04-arm
+            cibw_archs: aarch64
+          - os: windows-latest
+            cibw_archs: AMD64
+          - os: macos-13
+            cibw_archs: x86_64
+          - os: macos-15
+            cibw_archs: arm64
     steps:
-      - name: Checkout
-        uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
-      - name: Setup Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v4
-        with:
-          python-version: ${{ matrix.python-version }}
-
-      - name: Update PATH
-        if: ${{ matrix.os != 'windows' }}
-        run: echo "$HOME/.local/bin" >> $GITHUB_PATH
-
-      - name: Update PATH for Windows
-        if: ${{ matrix.os == 'windows' }}
-        run: echo "$APPDATA\Python\Scripts" >> $GITHUB_PATH
-
-      - name: Install Poetry
-        run: curl -sSL https://install.python-poetry.org/ | python -
-
-      - name: Configure Poetry
-        run: poetry config virtualenvs.in-project true
-
-      - name: Build
-        run: poetry build
-
-      - name: Publish to PyPI
-        run: poetry publish --skip-existing
+      - name: Build wheels
+        uses: pypa/cibuildwheel@v2.21.3
         env:
-          POETRY_PYPI_TOKEN_PYPI: ${{ secrets.PYPI_TOKEN }}
+          CIBW_ARCHS: ${{ matrix.cibw_archs }}
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: cibw-wheels-${{ matrix.os }}-${{ matrix.cibw_archs }}
+          path: ./wheelhouse/*.whl
+
+  build_sdist:
+    name: Source distribution
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.x"
+
+      - name: Build sdist
+        run: pipx run build --sdist
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: cibw-sdist
+          path: dist/*.tar.gz
+
+  publish:
+    name: Publish to PyPI
+    needs: [build_wheels, build_sdist]
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/v')
+    environment:
+      name: pypi
+      url: https://pypi.org/p/kcp
+    permissions:
+      id-token: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: cibw-*
+          path: dist
+          merge-multiple: true
+
+      - uses: pypa/gh-action-pypi-publish@release/v1

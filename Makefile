@@ -1,5 +1,21 @@
-build: kcp/*.py kcp/*.pyx kcp/*.pyi
-	poetry build
+.PHONY: build install test lint format clean
 
-#upload:
-#	poetry publish --dry-run
+build:
+	pipx run build
+
+install:
+	pip install -e ".[test]"
+
+test:
+	pytest
+
+lint:
+	ruff check .
+	ruff format --check .
+
+format:
+	ruff check --fix .
+	ruff format .
+
+clean:
+	rm -rf build dist wheelhouse *.egg-info kcp/extension.c kcp/*.so kcp/*.pyd

@@ -1,92 +1,72 @@
-[tool.poetry]
+[project]
 name = "kcp"
-version = "0.1.6"
+version = "1.0.0"
 description = "Python bindings and networking for the KCP protocol."
-authors = ["RealistikDash"]
-license = "MIT"
-
 readme = "README.md"
-
-homepage = "https://github.com/RealistikDash/kcp.py"
-repository = "https://github.com/RealistikDash/kcp.py"
-documentation = "https://github.com/RealistikDash/kcp.py"
-
+license = "MIT"
+authors = [{ name = "RealistikDash" }]
+requires-python = ">=3.10"
 keywords = ["kcp", "server", "client", "async", "asyncio"]
-
 classifiers = [
-    "Development Status :: 4 - Beta",
+    "Development Status :: 5 - Production/Stable",
     "Intended Audience :: Developers",
     "Operating System :: OS Independent",
     "Topic :: Utilities",
     "Typing :: Typed",
-    "License :: OSI Approved :: MIT License",
 ]
 
-[tool.poetry.urls]
+[project.optional-dependencies]
+test = ["pytest>=7.2.1"]
+
+[project.urls]
+Homepage = "https://github.com/RealistikDash/kcp.py"
+Repository = "https://github.com/RealistikDash/kcp.py"
+Documentation = "https://github.com/RealistikDash/kcp.py"
 Issues = "https://github.com/RealistikDash/kcp.py/issues"
 
-[[tool.poetry.packages]]
-include = "kcp"
+[build-system]
+requires = ["setuptools>=68", "cython>=3.0.11"]
+build-backend = "setuptools.build_meta"
 
-[[tool.poetry.include]]
-path = "kcp/*.so"
-format = "wheel"
+[tool.setuptools]
+include-package-data = false
 
-[[tool.poetry.include]]
-path = "kcp/*.pyd"
-format = "wheel"
+[tool.setuptools.packages.find]
+include = ["kcp*"]
 
-[[tool.poetry.include]]
-path = "kcp"
-format = "wheel"
+[tool.setuptools.package-data]
+kcp = ["py.typed", "*.pyi"]
 
-[tool.poetry.build]
-generate-setup-file = false
-script = "build.py"
+[tool.cibuildwheel]
+build = "cp310-* cp311-* cp312-* cp313-* cp314-*"
+skip = ["pp*", "*-musllinux_*", "*_i686", "*_win32"]
+build-frontend = "build"
+test-extras = ["test"]
+test-command = "pytest {project}/tests"
 
-[tool.poetry.dependencies]
-python = ">= 3.7"
+[tool.ruff]
+line-length = 100
+target-version = "py310"
 
-[tool.poetry.group.format]
-optional = true
+[tool.ruff.lint]
+select = [
+    "E",    # pycodestyle errors
+    "W",    # pycodestyle warnings
+    "F",    # pyflakes
+    "I",    # isort
+    "B",    # flake8-bugbear
+    "UP",   # pyupgrade
+    "C4",   # flake8-comprehensions
+    "SIM",  # flake8-simplify
+    "RUF",  # ruff-specific
+]
+ignore = [
+    "E501",  # line too long — handled by formatter
+]
 
-[tool.poetry.group.format.dependencies]
-black = "23.1.0"
-
-[tool.poetry.group.format.dependencies.isort]
-version = "5.11.5"
-python = "^3.7"
-
-[tool.poetry.group.test]
-optional = true
-
-[tool.poetry.group.test.dependencies]
-pytest = "7.2.1"
-
-[tool.poetry.group.docs]
-optional = true
-
-[tool.poetry.group.docs.dependencies]
-mkdocs = "1.4.2"
-mkdocs-material = "9.1.0"
-
-[tool.poetry.group.docs.dependencies.mkdocstrings]
-version = "0.20.0"
-extras = ["python"]
-
-[tool.poetry.group.dev.dependencies]
-changelogging = "1.1.0"
-
-[tool.black]
-line_length = 100
-
-[tool.isort]
-line_length = 100
-profile = "black"
+[tool.ruff.lint.isort]
+force-single-line = true
+required-imports = ["from __future__ import annotations"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
-
-[build-system]
-requires = ["poetry-core >= 1.3.2", "cython == 3.0.11", "entrypoint >= 1.3.0", "setuptools >= 65.6.3"]
-build-backend = "poetry.core.masonry.api"

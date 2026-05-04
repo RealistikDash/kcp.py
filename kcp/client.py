@@ -3,8 +3,7 @@ from __future__ import annotations
 import socket
 import threading
 import time
-from typing import Callable
-from typing import Optional
+from collections.abc import Callable
 
 from .extension import KCP
 
@@ -17,12 +16,13 @@ class KCPClientSync:
         address: str,
         port: int,
         conv_id: int,
-        no_delay: bool,
-        update_interval: int,
-        resend_count: int,
-        no_congestion_control: bool,
-        receive_window_size: int,
-        send_window_size: int,
+        no_delay: bool = False,
+        update_interval: int = 100,
+        resend_count: int = 2,
+        no_congestion_control: bool = False,
+        receive_window_size: int = 128,
+        send_window_size: int = 32,
+        max_transmission: int = 1400,
     ) -> None:
         """Configures a synchronous KCP client.
 
@@ -37,13 +37,17 @@ class KCPClientSync:
         :param no_congestion_control: Whether to disable congestion control.
         :param receive_window_size: The size of the receive window in packets.
         :param send_window_size: The size of the send window in packets.
+        :param max_transmission: The maximum transmission unit (MTU) of
+            outbound packets. Also sizes the inbound recv buffer.
         """
 
         self.address = address
         self.port = port
+        self._max_transmission = max_transmission
         self._sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM, 0)
         self._kcp = KCP(
             conv_id,
+            max_transmission=max_transmission,
             no_delay=no_delay,
             update_interval=update_interval,
             resend_count=resend_count,
@@ -58,8 +62,8 @@ class KCPClientSync:
         self._data_sent = False
 
         # Event handlers
-        self._handler: Optional[SyncDataHandler] = None
-        self._on_start: Optional[Callable[[], None]] = None
+        self._handler: SyncDataHandler | None = None
+        self._on_start: Callable[[], None] | None = None
 
     # Private API
     def _handle_data(self, data: bytes) -> None:
@@ -109,7 +113,7 @@ class KCPClientSync:
         self._wait_for_address()
 
         while True:
-            data, _ = self._sock.recvfrom(2048)
+            data, _ = self._sock.recvfrom(self._max_transmission)
             self._receive(data)
 
     def start(self) -> None:
