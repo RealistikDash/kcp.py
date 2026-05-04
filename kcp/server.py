@@ -10,8 +10,6 @@ from typing import Any
 
 from .extension import KCP
 
-DataMutator = Callable[[bytes], bytes]
-
 
 @dataclass
 class Connection:
@@ -20,7 +18,6 @@ class Connection:
     address: str
     port: int
     last_active: float
-    _data_mutators: list[DataMutator]
 
     def __post_init__(self) -> None:
         self._kcp.include_outbound_handler(self._send_kcp)
@@ -28,12 +25,6 @@ class Connection:
     @property
     def address_tuple(self) -> AddressType:
         return self.address, self.port
-
-    def _perform_mutations(self, data: bytes) -> bytes:
-        for mutator in self._data_mutators:
-            data = mutator(data)
-
-        return data
 
     def __update_activity(self) -> None:
         self.last_active = time.perf_counter()
@@ -46,7 +37,6 @@ class Connection:
         assert self._server._data_handler is not None  # SHUT UP MYPY
 
         for data in self._kcp.get_all_received():
-            data = self._perform_mutations(data)
             await self._server._data_handler(self, data)
 
     def enqueue(self, data: bytes) -> None:
@@ -69,15 +59,6 @@ class Connection:
             the time will be calculated.
         """
         self._kcp.update(ts_ms)
-
-    # Decorators
-    def add_data_mutator(self, mutator: DataMutator) -> None:
-        """Adds a local data mutator to the connection.
-
-        :param mutator: The mutator to add.
-        """
-
-        self._data_mutators.append(mutator)
 
 
 AddressType = tuple[Any, int]
@@ -134,8 +115,6 @@ class KCPServerAsync(asyncio.DatagramProtocol):
         self._on_start: EventHandler | None = None
         self._on_stop: EventHandler | None = None
 
-        self._data_mutators: list[DataMutator] = []
-
         # Connection settings.
         self._max_transmission = max_transmission
         self._no_delay = no_delay
@@ -169,7 +148,6 @@ class KCPServerAsync(asyncio.DatagramProtocol):
                 address=address[0],
                 port=address[1],
                 last_active=time.perf_counter(),
-                _data_mutators=self._data_mutators.copy(),
             )
             self._connections[address] = connection
 
@@ -269,9 +247,3 @@ class KCPServerAsync(asyncio.DatagramProtocol):
         stops listening for connections."""
         self._on_stop = handler
         return handler
-
-    def add_data_mutator(self, mutator: DataMutator) -> DataMutator:
-        """Decorator registering a global mutator which will be called on all data
-        received from a client."""
-        self._data_mutators.append(mutator)
-        return mutator

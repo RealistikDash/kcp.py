@@ -159,3 +159,4 @@ kcp/extension.c
 
 poetry.lock
 *.whl
+CLAUDE.md
